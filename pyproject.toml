@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphptc"
+version = "0.1.0"
+description = "Original PTC baseline and agentic-search evaluation harness for GraphPTC"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "codecell==0.2.1",
+    "openai==2.50.0",
+    "python-dotenv==1.1.1",
+    "tavily-python==0.7.26",
+    "toolregistry[ptc]==0.14.0",
+]
+
+[project.optional-dependencies]
+browsecomp-plus = [
+    "pyarrow==25.0.0",
+]
+gemini = [
+    "google-genai==2.15.0",
+]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.0.0",
+]
+
+[project.scripts]
+graphptc = "graphptc.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

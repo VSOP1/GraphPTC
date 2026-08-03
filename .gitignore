@@ -1,0 +1,17 @@
+.env
+.pytest_cache/
+__pycache__/
+*.egg-info/
+.coverage
+htmlcov/
+.venv/
+data/*.csv
+data/browsecomp_plus/corpus_parquet/
+data/browsecomp_plus/upstream/
+data/browsecomp_plus/official_indexes/
+data/browsecomp_plus/qwen3-tokenizer/
+data/browsecomp_plus/*.jsonl
+data/browsecomp_plus/*.sqlite3
+data/browsecomp_plus/*.sqlite3.tmp
+data/browsecomp_plus/qrel_*.txt
+runs/
