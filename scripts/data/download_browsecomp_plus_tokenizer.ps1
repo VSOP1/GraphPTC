@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoDir = Split-Path -Parent $PSScriptRoot
+$repoDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $revision = "c1899de289a04d12100db370d81485cdf75e47ca"
 
 if ($ProxyUrl) {

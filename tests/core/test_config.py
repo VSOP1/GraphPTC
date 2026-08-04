@@ -64,14 +64,3 @@ def test_original_ptc_full_config_uses_frozen_runtime_budget() -> None:
     assert config.runtime.compaction_trigger_input_tokens is None
     assert config.runtime.compaction_max_tokens == 2048
     assert config.runtime.max_total_output_tokens == 61_440
-
-
-def test_graphptc_stage1_config_has_separate_outputs() -> None:
-    config = ExperimentConfig.from_toml(
-        "configs/graphptc_browsecomp_plus.example.toml"
-    )
-
-    assert config.benchmark.responses_path == (
-        Path.cwd() / "runs/browsecomp_plus/graphptc-stage1/responses.jsonl"
-    )
-    assert config.benchmark.workers == 1

@@ -474,12 +474,8 @@ GraphPTC 应建立在可运行的原始 PTC baseline 上，并分阶段增加能
 
 该阶段只保证“能观察”，不要求执行结果复用。
 
-当前实现状态：已完成 Stage 1 最小闭环。`GraphPTCAgent` 复用 Original PTC 的模型循环和
-执行语义，并额外记录 `episode.started/finished`、`block.started/analyzed/finished` 和
-`tool.started/finished` 事件。事件包含稳定 ID、父子关系、状态、耗时及输入输出摘要，并以
-append-only JSONL 持久化。Program Analysis 当前只解析直接函数调用；当同一工具在一个
-block 中有多个静态调用点时仅记录候选集合，不宣称已经完成精确动态映射。依赖图、artifact
-管理、故障归因、修复和选择性重执行仍属于后续 Stage，不包含在本阶段中。
+当前实现状态：待基于冻结的 Original PTC baseline 从头实现。仓库不保留早期 Stage 1
+原型，避免旧 Agent、prompt、retriever 和 runtime 语义污染新的 GraphPTC 实现。
 
 ## Stage 2：Dynamic Dependency Graph
 

@@ -11,7 +11,7 @@ from typing import Any, Iterable, Iterator
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from .search import ToolBudgetExceeded, _deduplicate
+from .search import ToolBudgetExceeded
 
 
 @dataclass(frozen=True)
@@ -150,17 +150,6 @@ class SQLiteCorpusSearchTools:
                 error=str(exc),
             )
             raise
-
-    def search_local(self, query: str) -> list[dict[str, Any]]:
-        """Compatibility entry point for historical GraphPTC runs."""
-        return self.search(query=query)
-
-    def search_local_batch(
-        self, queries: list[str]
-    ) -> dict[str, list[dict[str, Any]]]:
-        """Search up to 20 independent queries against the frozen corpus."""
-        clean_queries = _deduplicate(queries, maximum=20)
-        return {query: self.search(query=query) for query in clean_queries}
 
     def _reserve(self, amount: int) -> int:
         with self._lock:

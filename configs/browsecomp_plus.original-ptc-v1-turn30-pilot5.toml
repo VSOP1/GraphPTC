@@ -9,12 +9,7 @@ max_retries = 8
 temperature = 0.0
 
 [search]
-# Unused for BrowseComp-Plus; retained for the shared experiment schema.
 api_key_env = "TAVILY_API_KEY"
-search_depth = "advanced"
-max_results = 10
-max_tool_calls = 1000
-timeout_seconds = 60.0
 
 [browsecomp_plus]
 source_browsecomp_path = "data/browse_comp_test_set.csv"
@@ -25,12 +20,10 @@ qrels_evidence_path = "data/browsecomp_plus/qrel_evidence.txt"
 retriever_url = "http://127.0.0.1:8765"
 retriever_timeout_seconds = 60.0
 top_k = 5
-# The official service truncates each search hit with the pinned Qwen tokenizer.
 snippet_max_tokens = 512
-# Used by synthetic SQLite experiment adapters.
 snippet_max_chars = 2048
 max_tool_calls = 1000
-expected_examples = 830
+expected_examples = 20
 prompt_variant = "original-ptc-v1"
 
 [runtime]
@@ -45,10 +38,10 @@ max_compactions = 0
 max_total_output_tokens = 61440
 
 [benchmark]
-dataset_path = "data/browsecomp_plus/questions.jsonl"
-responses_path = "runs/browsecomp_plus/original-ptc-v1-turn30-full/responses.jsonl"
-grades_path = "runs/browsecomp_plus/original-ptc-v1-turn30-full/grades.jsonl"
-report_path = "runs/browsecomp_plus/original-ptc-v1-turn30-full/report.json"
+dataset_path = "data/browsecomp_plus/pilot20.questions.jsonl"
+responses_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/responses.jsonl"
+grades_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/grades.jsonl"
+report_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/report.json"
 workers = 4
 
 [grader]

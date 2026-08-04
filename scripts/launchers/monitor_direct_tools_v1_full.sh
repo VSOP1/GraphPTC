@@ -2,7 +2,7 @@
 set -u
 
 session_name="${1:-graphptc-direct-full-v1}"
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 run_dir="$repo_dir/runs/browsecomp_plus/direct-tools-v1-turn30-full"
 responses="$run_dir/responses.jsonl"
 grades="$run_dir/grades.jsonl"

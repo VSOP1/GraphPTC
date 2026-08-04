@@ -35,6 +35,8 @@ from .direct_tool_agent import DirectToolAgent
 from .local_search import OfficialCorpusSearchTools
 from .model import OpenAIChatModel
 from .ptc import extract_result_tag
+from .experiments.phase_planning import PHASE_PLANNING_SUFFIX
+from .experiments.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
 
 
 BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST: tuple[dict[str, Any], ...] = (
@@ -122,6 +124,10 @@ BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT = (
     + _ORIGINAL_PTC_SEMANTIC_GUIDANCE
 )
 
+BROWSECOMP_PLUS_PHASE_PLANNING_SYSTEM_PROMPT = (
+    BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT + PHASE_PLANNING_SUFFIX
+)
+
 
 BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE = """Answer the following question using the
 research environment when evidence is needed.
@@ -150,6 +156,14 @@ commas."""
 
 _PROMPT_VARIANTS = {
     "original-ptc-v1": (
+        BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
+        BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
+    ),
+    "phase-planning-v1": (
+        BROWSECOMP_PLUS_PHASE_PLANNING_SYSTEM_PROMPT,
+        BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
+    ),
+    "fewshot-ptc-v1": (
         BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
         BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
     ),
@@ -301,6 +315,7 @@ def run_browsecomp_plus_benchmark(
                     ptc_tool_spec=BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC,
                     persistent=True,
                     structured_observation=False,
+                    demonstration_messages=_demonstration_messages(config),
                 )
             result = agent.run(example.question)
             prediction = (
@@ -640,6 +655,7 @@ def _run_signature_payload(
         "action_transport": "function_call",
         "system_prompt": system_prompt,
         "user_prompt_template": user_prompt_template,
+        "demonstration_messages": _demonstration_messages(config),
         "runtime_tool_manifest": _runtime_tool_manifest(config),
         "ptc_tool_spec": _ptc_tool_spec(config),
         "direct_tool_specs": (
@@ -676,8 +692,17 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
 def _runtime_tool_manifest(
     config: ExperimentConfig,
 ) -> tuple[dict[str, Any], ...]:
-    if config.browsecomp_plus.prompt_variant == "original-ptc-v1":
-        return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
+    if config.browsecomp_plus.prompt_variant == "direct-tools-v1":
+        return ()
+    return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
+
+
+def _demonstration_messages(
+    config: ExperimentConfig,
+) -> tuple[dict[str, Any], ...]:
+    variant = config.browsecomp_plus.prompt_variant
+    if variant == "fewshot-ptc-v1":
+        return PTC_FEW_SHOT_MESSAGES
     return ()
 
 

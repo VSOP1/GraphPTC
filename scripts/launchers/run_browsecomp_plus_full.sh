@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 run_dir="$repo_dir/runs/browsecomp_plus/original-ptc-v1-turn30-full"
 mkdir -p "$run_dir"
 

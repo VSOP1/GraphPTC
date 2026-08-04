@@ -236,6 +236,7 @@ def test_resume_discards_only_truncated_last_jsonl_record(
     monkeypatch.setattr(
         benchmark, "_retriever_metadata", lambda config: RETRIEVER_METADATA
     )
+    monkeypatch.delenv("MIMO_API_KEY", raising=False)
     config.benchmark.responses_path.write_text('{"example_id":"1"', encoding="utf-8")
 
     with pytest.raises(ValueError, match="MIMO_API_KEY"):

@@ -2,7 +2,7 @@
 set -u
 
 session_name="${1:-graphptc-bcp-full}"
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 run_dir="$repo_dir/runs/browsecomp_plus/original-ptc-v1-turn30-full"
 responses="$run_dir/responses.jsonl"
 progress_log="$run_dir/full-run.monitor.log"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 run_dir="$repo_dir/runs/browsecomp_plus/direct-tools-v1-turn30-full"
 config="configs/browsecomp_plus.direct-tools-v1-turn30-full.toml"
 mkdir -p "$run_dir"

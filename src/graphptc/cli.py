@@ -21,15 +21,11 @@ from .browsecomp_plus_benchmark import (
 )
 from .config import ConfigError, ExperimentConfig
 from .deepsearchqa import DeepSearchQAError, download_deepsearchqa
-from .graph_browsecomp_plus_benchmark import (
-    run_graphptc_browsecomp_plus_benchmark,
-)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
 BROWSECOMP_CONFIG = "configs/browsecomp.example.toml"
 BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus.example.toml"
-GRAPHPTC_BROWSECOMP_PLUS_CONFIG = "configs/graphptc_browsecomp_plus.example.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -121,17 +117,6 @@ def _run_command(
         result = evaluate_browsecomp_plus_benchmark(config)
         print(json.dumps(result.summary.to_dict(), ensure_ascii=False, indent=2))
         return 0
-
-    if args.command == "run-graphptc-browsecomp-plus":
-        summary = run_graphptc_browsecomp_plus_benchmark(
-            config,
-            limit=args.limit,
-            example_ids=args.example_id,
-            resume=not args.restart,
-            progress=_print_progress,
-        )
-        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
-        return 0 if summary.failed == 0 else 1
 
     parser.error(f"Unknown command: {args.command}")
     return 2
@@ -238,27 +223,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_config_argument(browsecomp_plus_evaluate, default=BROWSECOMP_PLUS_CONFIG)
 
-    graphptc_browsecomp_plus_run = subparsers.add_parser(
-        "run-graphptc-browsecomp-plus",
-        help="Run Stage 1 GraphPTC observability on BrowseComp-Plus.",
-    )
-    _add_config_argument(
-        graphptc_browsecomp_plus_run, default=GRAPHPTC_BROWSECOMP_PLUS_CONFIG
-    )
-    graphptc_browsecomp_plus_run.add_argument(
-        "--limit", type=int, help="Run only the first N selected examples."
-    )
-    graphptc_browsecomp_plus_run.add_argument(
-        "--example-id",
-        action="append",
-        default=[],
-        help="Run a specific query ID; repeat for multiple IDs.",
-    )
-    graphptc_browsecomp_plus_run.add_argument(
-        "--restart",
-        action="store_true",
-        help="Replace Stage 1 responses and events instead of resuming.",
-    )
     return parser
 
 

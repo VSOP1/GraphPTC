@@ -148,18 +148,6 @@ Original PTC 的冻结 20 题 pilot 由 SHA-256 对 query ID 排序选取，排�
 配置为 `configs/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml`。该配置显式要求
 20 条数据，不能用于 830 题全量评测；默认 `browsecomp_plus.example.toml` 指向全量输出。
 
-GraphPTC Stage 1 在不改变 Original PTC 策略的前提下记录 episode、PTC block 和 runtime
-tool call 的执行事件。它使用独立配置与输出目录，不会覆盖 baseline：
-
-```powershell
-.\.venv\Scripts\graphptc.exe run-graphptc-browsecomp-plus --example-id 769 --restart
-```
-
-响应写入 `runs/browsecomp_plus/graphptc-stage1/responses.jsonl`，事件以 append-only JSONL
-写入同目录的 `events.jsonl`。静态 AST 只能给出工具调用位置的候选映射：同名调用点唯一时
-标记为 `unique_static_candidate`，存在多个候选时标记为 `ambiguous`，不能映射时标记为
-`unmapped`。Stage 1 尚不构建依赖图，也不执行修复或回放。
-
 数据固定到 `Tevatron/browsecomp-plus-corpus` revision
 `b27b02bc3e45511b8b82a13e6f90ce761df726f6`，7 个 Parquet 分片均按官方 LFS SHA-256
 校验。问题由 BrowseComp-Plus qrel 的一基 `query_id` 映射到官方 BrowseComp 加密数据，

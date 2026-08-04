@@ -93,6 +93,7 @@ class CodeActPTCAgent(OriginalPTCAgent):
         persistent: bool = True,
         structured_observation: bool = False,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
+        demonstration_messages: Iterable[dict[str, Any]] = (),
     ) -> None:
         self._persistent_runtime = PersistentIpcRuntime() if persistent else None
         self._structured_observation = structured_observation
@@ -106,6 +107,7 @@ class CodeActPTCAgent(OriginalPTCAgent):
             runtime_functions=runtime_functions,
             checkpoint_callback=checkpoint_callback,
             ptc_tool_spec=ptc_tool_spec,
+            demonstration_messages=demonstration_messages,
         )
 
     def _create_registry(

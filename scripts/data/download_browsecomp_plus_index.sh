@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 hf_cli="/home/agent/.venvs/graphptc-retriever/bin/hf"
 index_revision="b3f37f70c33829eb09d04784a54277a31871fd63"
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from graphptc.cli import (
     BROWSECOMP_CONFIG,
     BROWSECOMP_PLUS_CONFIG,
-    GRAPHPTC_BROWSECOMP_PLUS_CONFIG,
     _build_parser,
 )
 
@@ -39,12 +38,3 @@ def test_browsecomp_plus_commands_use_local_benchmark_config() -> None:
     assert run_args.config == Path(BROWSECOMP_PLUS_CONFIG)
     assert run_args.example_id == ["769"]
     assert evaluate_args.config == Path(BROWSECOMP_PLUS_CONFIG)
-
-
-def test_graphptc_browsecomp_plus_uses_separate_stage1_config() -> None:
-    args = _build_parser().parse_args(
-        ["run-graphptc-browsecomp-plus", "--example-id", "769"]
-    )
-
-    assert args.config == Path(GRAPHPTC_BROWSECOMP_PLUS_CONFIG)
-    assert args.example_id == ["769"]
