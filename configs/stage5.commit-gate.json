@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "prompt_variant": "fewshot-ptc-v1",
+  "cases": [
+    {
+      "case_id": "same-block-multi-tool-commit",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:1", "start_line": 3, "end_line": 3, "expected_code": "print(right[3]['docid'])", "replacement_code": "print(right[0]['docid'])"},
+      "expected": {"committed": true, "zero_commit": false, "source_unchanged": true, "execution_versioned": true, "new_episode": true, "program_version_matched": true, "graph_event_count": 6, "block_count": 1, "tool_actions": ["REUSE_RESULT", "REUSE_RESULT"], "reused_source_artifact_count": 2, "new_tool_artifact_count": 2, "invalidated_artifact_leak_count": 0, "dangling_edge_count": 0, "unknown_source_provenance_count": 0, "answer": "right-1", "live_calls": []}
+    },
+    {
+      "case_id": "cross-block-versioned-commit",
+      "episode_id": "audit-runtime",
+      "anchor_node_id": "output:audit-runtime:block:2",
+      "proposal": {"block_id": "audit-runtime:block:2", "start_line": 1, "end_line": 1, "expected_code": "print(hits[2]['title'])", "replacement_code": "print(hits[0]['title'])"},
+      "expected": {"committed": true, "zero_commit": false, "source_unchanged": true, "execution_versioned": true, "new_episode": true, "program_version_matched": true, "graph_event_count": 7, "block_count": 2, "tool_actions": ["REUSE_RESULT"], "reused_source_artifact_count": 1, "new_tool_artifact_count": 1, "invalidated_artifact_leak_count": 0, "dangling_edge_count": 0, "unknown_source_provenance_count": 0, "answer": "Alpha", "live_calls": []}
+    },
+    {
+      "case_id": "reexecuted-tool-versioned-commit",
+      "episode_id": "audit-tool",
+      "anchor_node_id": "tool:audit-tool:block:1:1",
+      "proposal": {"block_id": "audit-tool:block:1", "start_line": 1, "end_line": 1, "expected_code": "print(search(query='alpha', timeout=30))", "replacement_code": "print(search(query='alpha'))"},
+      "live_tool": {"name": "search", "result": [{"docid": "fresh-alpha"}]},
+      "expected": {"committed": true, "zero_commit": false, "source_unchanged": true, "execution_versioned": true, "new_episode": true, "program_version_matched": true, "graph_event_count": 5, "block_count": 1, "tool_actions": ["REEXECUTE"], "reused_source_artifact_count": 0, "new_tool_artifact_count": 1, "invalidated_artifact_leak_count": 0, "dangling_edge_count": 0, "unknown_source_provenance_count": 0, "answer": "[{'docid': 'fresh-alpha'}]", "live_calls": [{"tool": "search", "arguments": {"query": "alpha"}}]}
+    },
+    {
+      "case_id": "reset-zero-commit",
+      "episode_id": "audit-tool",
+      "anchor_node_id": "tool:audit-tool:block:1:1",
+      "proposal": {"block_id": "audit-tool:block:1", "start_line": 1, "end_line": 1, "expected_code": "print(search(query='alpha', timeout=30))", "replacement_code": "print(search(query='alpha'))"},
+      "force_reset": true,
+      "expected": {"committed": false, "zero_commit": true, "source_unchanged": true, "execution_versioned": false, "new_episode": false, "program_version_matched": false, "graph_event_count": 0, "block_count": 0, "tool_actions": [], "reused_source_artifact_count": 0, "new_tool_artifact_count": 0, "invalidated_artifact_leak_count": 0, "dangling_edge_count": 0, "unknown_source_provenance_count": 0, "answer": null, "live_calls": []}
+    }
+  ]
+}

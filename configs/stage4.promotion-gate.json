@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "prompt_variant": "fewshot-ptc-v1",
+  "timeout_seconds": 5,
+  "positive_cases": [
+    {
+      "case_id": "no-stdout-runtime",
+      "episode_id": "audit-no-stdout",
+      "anchor_node_id": "output:audit-no-stdout:block:1",
+      "proposal": {"block_id": "audit-no-stdout:block:1", "start_line": 1, "end_line": 1, "expected_code": "value = 42", "replacement_code": "print(42)"},
+      "expected_code_sha256": "c2d6e9060cbe8dee44279258cc8677d7a20ec16eeeccfedd09b840283efd3685",
+      "expected_block_ids": ["audit-no-stdout:block:1"],
+      "expected_stdout": "42\n",
+      "tools": []
+    },
+    {
+      "case_id": "same-block-multitool",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:1", "start_line": 3, "end_line": 3, "expected_code": "print(right[3]['docid'])", "replacement_code": "print(right[0]['docid'])"},
+      "expected_code_sha256": "5d477d8869d4468bb9f7860a7a20667d2d3f61b198daac924a31141a229e5c3f",
+      "expected_block_ids": ["audit-multitool:block:1"],
+      "expected_stdout": "doc-beta\n",
+      "tools": [{"name": "search", "calls": [{"arguments": {"query": "alpha"}, "result": [{"docid": "doc-alpha", "score": 1}]}, {"arguments": {"query": "beta"}, "result": [{"docid": "doc-beta", "score": 1}]}]}]
+    },
+    {
+      "case_id": "cross-block-state",
+      "episode_id": "audit-runtime",
+      "anchor_node_id": "output:audit-runtime:block:2",
+      "proposal": {"block_id": "audit-runtime:block:2", "start_line": 1, "end_line": 1, "expected_code": "print(hits[2]['title'])", "replacement_code": "print(hits[0]['title'])"},
+      "expected_code_sha256": "2f2962471da3da52ceb0780ab58c3be5420904383372ef09d210f7a59d95e19f",
+      "expected_block_ids": ["audit-runtime:block:1", "audit-runtime:block:2"],
+      "expected_stdout": "Alpha\n",
+      "tools": [{"name": "search", "calls": [{"arguments": {"query": "alpha"}, "result": [{"docid": "doc-alpha", "title": "Alpha"}]}]}]
+    },
+    {
+      "case_id": "tool-failure",
+      "episode_id": "audit-tool",
+      "anchor_node_id": "tool:audit-tool:block:1:1",
+      "proposal": {"block_id": "audit-tool:block:1", "start_line": 1, "end_line": 1, "expected_code": "print(search(query='alpha', timeout=30))", "replacement_code": "print(search(query='alpha'))"},
+      "expected_code_sha256": "4b04c21632c8c98bc1be0ac4dfd46fd53fa2b162cf8495ef04e1cac9db5e5d62",
+      "expected_block_ids": ["audit-tool:block:1"],
+      "expected_stdout": "[{'docid': 'alpha'}]\n",
+      "tools": [{"name": "search", "calls": [{"arguments": {"query": "alpha"}, "result": [{"docid": "alpha"}]}]}]
+    },
+    {
+      "case_id": "transform-failure",
+      "episode_id": "audit-transform",
+      "anchor_node_id": "output:audit-transform:block:1",
+      "proposal": {"block_id": "audit-transform:block:1", "start_line": 5, "end_line": 5, "expected_code": "assert count > 1, 'expected multiple unique hits'", "replacement_code": "assert count >= 1, 'expected multiple unique hits'"},
+      "expected_code_sha256": "f7b8cd72203b33dcb73410bc08e431438d71f6256c11ce9fd3097ee41009bf68",
+      "expected_block_ids": ["audit-transform:block:1"],
+      "expected_stdout": "1\n",
+      "tools": [{"name": "search", "calls": [{"arguments": {"query": "alpha"}, "result": [{"docid": "a", "score": 1}]}]}]
+    }
+  ],
+  "negative_cases": [
+    {
+      "case_id": "forbidden-block",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:99", "start_line": 1, "end_line": 1, "expected_code": "x = 1", "replacement_code": "x = 2"},
+      "expected_error": "patch target is outside the repair context",
+      "out_of_bounds": true
+    },
+    {
+      "case_id": "stale-source",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:1", "start_line": 3, "end_line": 3, "expected_code": "print(right[2]['docid'])", "replacement_code": "print(right[0]['docid'])"},
+      "expected_error": "expected_code does not match the source program",
+      "out_of_bounds": false
+    },
+    {
+      "case_id": "invalid-python",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:1", "start_line": 3, "end_line": 3, "expected_code": "print(right[3]['docid'])", "replacement_code": "print("},
+      "expected_error": "patched program is not valid Python",
+      "out_of_bounds": false
+    }
+  ]
+}

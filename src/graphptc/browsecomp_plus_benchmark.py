@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import platform
@@ -8,7 +9,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .benchmark import (
     BenchmarkRunSummary,
@@ -34,6 +35,7 @@ from .codeact_agent import CodeActPTCAgent
 from .direct_tool_agent import DirectToolAgent
 from .local_search import OfficialCorpusSearchTools
 from .model import OpenAIChatModel
+from .observability import ExecutionObserver
 from .ptc import extract_result_tag
 from .experiments.phase_planning import PHASE_PLANNING_SUFFIX
 from .experiments.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
@@ -234,6 +236,12 @@ def run_browsecomp_plus_benchmark(
     example_ids: Iterable[str] | None = None,
     resume: bool = True,
     progress: ProgressCallback | None = None,
+    observer_factory: Callable[[str, str], ExecutionObserver] | None = None,
+    post_episode_callback: Callable[[str, str, dict[str, Any]], None] | None = None,
+    active_repair_callback_factory: Callable[
+        [str, str, OfficialCorpusSearchTools], Callable[..., dict[str, Any]]
+    ]
+    | None = None,
 ) -> BenchmarkRunSummary:
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1")
@@ -316,6 +324,18 @@ def run_browsecomp_plus_benchmark(
                     persistent=True,
                     structured_observation=False,
                     demonstration_messages=_demonstration_messages(config),
+                    observer=(
+                        observer_factory(example.example_id, run_signature)
+                        if observer_factory is not None
+                        else None
+                    ),
+                    active_repair_callback=(
+                        active_repair_callback_factory(
+                            example.example_id, run_signature, tools
+                        )
+                        if active_repair_callback_factory is not None
+                        else None
+                    ),
                 )
             result = agent.run(example.question)
             prediction = (
@@ -356,9 +376,8 @@ def run_browsecomp_plus_benchmark(
                 "agent": result.to_dict(),
             }
             checkpoint_path.unlink(missing_ok=True)
-            return record
         except Exception as exc:
-            return {
+            record = {
                 "schema_version": 1,
                 "benchmark": "browsecomp_plus",
                 "run_signature": run_signature,
@@ -373,6 +392,16 @@ def run_browsecomp_plus_benchmark(
                 "created_at": datetime.now(UTC).isoformat(),
                 "agent": None,
             }
+        if post_episode_callback is not None:
+            try:
+                post_episode_callback(
+                    example.example_id,
+                    run_signature,
+                    copy.deepcopy(record),
+                )
+            except Exception:
+                pass
+        return record
 
     records: list[dict[str, Any]] = []
     workers = min(config.benchmark.workers, len(pending)) if pending else 0

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "same-block-output",
+      "episode_id": "audit-multitool",
+      "anchor_node_id": "output:audit-multitool:block:1",
+      "proposal": {"block_id": "audit-multitool:block:1", "start_line": 3, "end_line": 3, "expected_code": "print(right[3]['docid'])", "replacement_code": "print(right[0]['docid'])"},
+      "invalidated_node_ids": ["episode:audit-multitool", "block:audit-multitool:block:1", "output:audit-multitool:block:1", "output:audit-multitool:final"],
+      "reexecute_node_ids": ["block:audit-multitool:block:1", "output:audit-multitool:block:1"],
+      "revalidate_node_ids": ["episode:audit-multitool", "output:audit-multitool:final"],
+      "invalidated_artifact_ids": ["artifact:output:audit-multitool:block:1:stdout", "artifact:output:audit-multitool:final:answer"],
+      "reusable_artifact_ids": ["artifact:tool:audit-multitool:block:1:1:result", "artifact:tool:audit-multitool:block:1:2:result"],
+      "tool_actions": [{"node_id": "tool:audit-multitool:block:1:1", "action": "REUSE_RESULT"}, {"node_id": "tool:audit-multitool:block:1:2", "action": "REUSE_RESULT"}]
+    },
+    {
+      "case_id": "cross-block-output",
+      "episode_id": "audit-runtime",
+      "anchor_node_id": "output:audit-runtime:block:2",
+      "proposal": {"block_id": "audit-runtime:block:2", "start_line": 1, "end_line": 1, "expected_code": "print(hits[2]['title'])", "replacement_code": "print(hits[0]['title'])"},
+      "invalidated_node_ids": ["episode:audit-runtime", "block:audit-runtime:block:2", "output:audit-runtime:block:2", "output:audit-runtime:final"],
+      "reexecute_node_ids": ["block:audit-runtime:block:2", "output:audit-runtime:block:2"],
+      "revalidate_node_ids": ["episode:audit-runtime", "output:audit-runtime:final"],
+      "invalidated_artifact_ids": ["artifact:output:audit-runtime:block:2:stdout", "artifact:output:audit-runtime:final:answer"],
+      "reusable_artifact_ids": ["artifact:tool:audit-runtime:block:1:1:result", "artifact:output:audit-runtime:block:1:stdout"],
+      "tool_actions": [{"node_id": "tool:audit-runtime:block:1:1", "action": "REUSE_RESULT"}]
+    },
+    {
+      "case_id": "tool-call-change",
+      "episode_id": "audit-tool",
+      "anchor_node_id": "tool:audit-tool:block:1:1",
+      "proposal": {"block_id": "audit-tool:block:1", "start_line": 1, "end_line": 1, "expected_code": "print(search(query='alpha', timeout=30))", "replacement_code": "print(search(query='alpha'))"},
+      "invalidated_node_ids": ["episode:audit-tool", "block:audit-tool:block:1", "tool:audit-tool:block:1:1", "output:audit-tool:block:1", "output:audit-tool:final"],
+      "reexecute_node_ids": ["block:audit-tool:block:1", "tool:audit-tool:block:1:1", "output:audit-tool:block:1"],
+      "revalidate_node_ids": ["episode:audit-tool", "output:audit-tool:final"],
+      "invalidated_artifact_ids": ["artifact:output:audit-tool:block:1:stdout", "artifact:output:audit-tool:final:answer"],
+      "reusable_artifact_ids": [],
+      "tool_actions": [{"node_id": "tool:audit-tool:block:1:1", "action": "REEXECUTE"}]
+    },
+    {
+      "case_id": "transform-data-change",
+      "episode_id": "audit-transform",
+      "anchor_node_id": "output:audit-transform:block:1",
+      "proposal": {"block_id": "audit-transform:block:1", "start_line": 2, "end_line": 2, "expected_code": "filtered = [hit for hit in hits if hit['score'] > 0]", "replacement_code": "filtered = [hit for hit in hits if hit['score'] >= 0]"},
+      "invalidated_node_ids": ["episode:audit-transform", "block:audit-transform:block:1", "transform:audit-transform:block:1:data:1", "transform:audit-transform:block:1:data:2", "transform:audit-transform:block:1:data:3", "output:audit-transform:block:1", "state:audit-transform:block:1:count", "state:audit-transform:block:1:filtered", "state:audit-transform:block:1:unique", "output:audit-transform:final"],
+      "reexecute_node_ids": ["block:audit-transform:block:1", "transform:audit-transform:block:1:data:1", "transform:audit-transform:block:1:data:2", "transform:audit-transform:block:1:data:3", "output:audit-transform:block:1", "state:audit-transform:block:1:count", "state:audit-transform:block:1:filtered", "state:audit-transform:block:1:unique"],
+      "revalidate_node_ids": ["episode:audit-transform", "output:audit-transform:final"],
+      "invalidated_artifact_ids": ["artifact:output:audit-transform:block:1:stdout", "artifact:output:audit-transform:final:answer"],
+      "reusable_artifact_ids": ["artifact:tool:audit-transform:block:1:1:result"],
+      "tool_actions": [{"node_id": "tool:audit-transform:block:1:1", "action": "REUSE_RESULT"}]
+    },
+    {
+      "case_id": "transform-assertion-change",
+      "episode_id": "audit-transform",
+      "anchor_node_id": "output:audit-transform:block:1",
+      "proposal": {"block_id": "audit-transform:block:1", "start_line": 5, "end_line": 5, "expected_code": "assert count > 1, 'expected multiple unique hits'", "replacement_code": "assert count >= 1, 'expected multiple unique hits'"},
+      "invalidated_node_ids": ["episode:audit-transform", "block:audit-transform:block:1", "output:audit-transform:block:1", "output:audit-transform:final"],
+      "reexecute_node_ids": ["block:audit-transform:block:1", "output:audit-transform:block:1"],
+      "revalidate_node_ids": ["episode:audit-transform", "output:audit-transform:final"],
+      "invalidated_artifact_ids": ["artifact:output:audit-transform:block:1:stdout", "artifact:output:audit-transform:final:answer"],
+      "reusable_artifact_ids": ["artifact:tool:audit-transform:block:1:1:result"],
+      "tool_actions": [{"node_id": "tool:audit-transform:block:1:1", "action": "REUSE_RESULT"}]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ from typing import Any
 from toolregistry import ToolRegistry
 
 from .config import RuntimeConfig
+from .observability import ExecutionObserver
 from .persistent_runtime import PersistentIpcRuntime
 from .ptc import PTC_TOOL_SPEC, OriginalPTCAgent, PTCBlockTrace, _truncate
 from .search import TavilySearchTools
@@ -94,10 +95,22 @@ class CodeActPTCAgent(OriginalPTCAgent):
         structured_observation: bool = False,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
         demonstration_messages: Iterable[dict[str, Any]] = (),
+        observer: ExecutionObserver | None = None,
+        active_repair_callback: (
+            Callable[[str, PersistentIpcRuntime], dict[str, Any]] | None
+        ) = None,
     ) -> None:
-        self._persistent_runtime = PersistentIpcRuntime() if persistent else None
+        if active_repair_callback is not None and observer is None:
+            raise ValueError("active repair requires an execution observer")
+        self._observer = observer
+        self._active_repair_callback = active_repair_callback
+        self._active_repair_attempted = False
+        self._persistent_runtime = (
+            PersistentIpcRuntime(observer=observer) if persistent else None
+        )
         self._structured_observation = structured_observation
         self._seen_docids: set[str] = set()
+        self._observed_block_count = 0
         super().__init__(
             model=model,
             search_tools=search_tools,
@@ -124,6 +137,10 @@ class CodeActPTCAgent(OriginalPTCAgent):
 
     def run(self, task: str):  # type: ignore[no-untyped-def]
         result = None
+        self._observed_block_count = 0
+        self._active_repair_attempted = False
+        if self._observer is not None:
+            self._observer.emit("episode.started", data={"task": task})
         try:
             result = super().run(task)
         finally:
@@ -131,13 +148,103 @@ class CodeActPTCAgent(OriginalPTCAgent):
                 self._persistent_runtime.close()
         if result is not None and self._persistent_runtime is not None:
             result.runtime_session = self._persistent_runtime.telemetry()
+        if self._observer is not None:
+            self._observer.emit(
+                "episode.finished",
+                data={
+                    "status": result.status if result is not None else "failed",
+                    "answer": result.answer if result is not None else "",
+                    "error": result.error if result is not None else "Agent run failed",
+                    "ptc_blocks": result.ptc_blocks if result is not None else 0,
+                },
+            )
         return result
 
     def _execute_block(
         self, turn_number: int, code: Any
     ) -> tuple[str, bool, PTCBlockTrace]:
+        self._observed_block_count += 1
+        block_id = (
+            f"{self._observer.episode_id}:block:{self._observed_block_count}"
+            if self._observer is not None
+            else None
+        )
+        if self._observer is not None:
+            self._observer.emit(
+                "block.started",
+                block_id=block_id,
+                data={
+                    "turn": turn_number,
+                    "tool_call_id": getattr(self, "_active_tool_call_id", None),
+                    "code": code if isinstance(code, str) else repr(code),
+                },
+            )
+        if self._persistent_runtime is not None:
+            self._persistent_runtime.active_block_id = block_id
         calls_before = len(self._search_tools.calls)
-        output, is_error, trace = super()._execute_block(turn_number, code)
+        try:
+            output, is_error, trace = super()._execute_block(turn_number, code)
+        finally:
+            if self._persistent_runtime is not None:
+                self._persistent_runtime.active_block_id = None
+        if self._observer is not None:
+            runtime_trace = (
+                self._persistent_runtime.last_execution_trace
+                if self._persistent_runtime is not None
+                else {}
+            )
+            self._observer.emit(
+                "block.finished",
+                block_id=block_id,
+                data={**trace.__dict__, "runtime_trace": runtime_trace},
+            )
+        if (
+            is_error
+            and block_id is not None
+            and self._persistent_runtime is not None
+            and self._active_repair_callback is not None
+            and not self._active_repair_attempted
+        ):
+            self._active_repair_attempted = True
+            try:
+                repair = self._active_repair_callback(
+                    block_id, self._persistent_runtime
+                )
+            except Exception as exc:
+                repair = {
+                    "status": "active_repair_error",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                }
+            if self._observer is not None:
+                self._observer.emit(
+                    "repair.finished",
+                    block_id=block_id,
+                    data={key: value for key, value in repair.items() if key != "output"},
+                )
+            if repair.get("status") == "repaired_active":
+                repaired_output = str(repair["output"])
+                stdout_chars = len(repaired_output)
+                stdout_truncated = stdout_chars > self._runtime.max_stdout_chars
+                output = _truncate(repaired_output, self._runtime.max_stdout_chars)
+                trace = PTCBlockTrace(
+                    **{
+                        **trace.__dict__,
+                        "code": str(repair["patched_code"]),
+                        "stdout": output,
+                        "stdout_chars": stdout_chars,
+                        "stdout_truncated": stdout_truncated,
+                        "success": True,
+                        "runtime_calls": int(
+                            repair.get("replay", {}).get(
+                                "executed_tool_call_count", 0
+                            )
+                        ),
+                        "error_type": None,
+                        "error_message": None,
+                    }
+                )
+                is_error = False
         if not self._structured_observation or is_error:
             return output, is_error, trace
 

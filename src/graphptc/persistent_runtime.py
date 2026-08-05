@@ -7,27 +7,50 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from codecell import BaseRuntime, CodeResult, truncate
 from codecell.python import PythonValidator
 
+from .observability import ExecutionObserver
+
+
+@dataclass(frozen=True)
+class InterceptedToolResult:
+    value: Any
+    event_data: dict[str, Any]
+
+
+ToolCallInterceptor = Callable[
+    [str, dict[str, Any], dict[str, Any] | None, Callable[..., Any] | None],
+    InterceptedToolResult,
+]
+
 
 class PersistentIpcRuntime(BaseRuntime):
     """Task-scoped Python subprocess with persistent globals and IPC tools."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        observer: ExecutionObserver | None = None,
+        tool_call_interceptor: ToolCallInterceptor | None = None,
+    ) -> None:
         super().__init__(PythonValidator())
         self._process: subprocess.Popen[str] | None = None
         self._lines: queue.Queue[str | None] | None = None
         self._lock = threading.Lock()
         self.last_state: dict[str, str] = {}
+        self.last_execution_trace: dict[str, Any] = {}
         self._process_starts = 0
         self._executions = 0
         self._timeouts = 0
         self._protocol_errors = 0
         self._tool_calls = 0
         self._closed = False
+        self.observer = observer
+        self.tool_call_interceptor = tool_call_interceptor
+        self.active_block_id: str | None = None
 
     def execute(
         self,
@@ -39,6 +62,7 @@ class PersistentIpcRuntime(BaseRuntime):
         self._validator.validate(code)
         with self._lock:
             self._executions += 1
+            self.last_execution_trace = {}
             process, lines = self._ensure_process()
             tool_docs = {
                 name: getattr(function, "__doc__", None)
@@ -46,7 +70,12 @@ class PersistentIpcRuntime(BaseRuntime):
             }
             self._send(
                 process,
-                {"type": "execute", "tools": tool_docs, "code": code},
+                {
+                    "type": "execute",
+                    "tools": tool_docs,
+                    "code": code,
+                    "observe": self.observer is not None,
+                },
             )
             deadline = time.monotonic() + timeout if timeout else None
             while True:
@@ -76,6 +105,9 @@ class PersistentIpcRuntime(BaseRuntime):
                     continue
                 if message_type == "done":
                     self.last_state = dict(message.get("state", {}))
+                    self.last_execution_trace = dict(
+                        message.get("execution_trace", {})
+                    )
                     return CodeResult(
                         stdout=truncate(str(message.get("stdout", ""))),
                         stderr=truncate(str(message.get("stderr", ""))),
@@ -152,12 +184,49 @@ class PersistentIpcRuntime(BaseRuntime):
     ) -> None:
         self._tool_calls += 1
         tool_name = str(message.get("tool", ""))
+        kwargs = message.get("kwargs", {})
+        call_site = message.get("call_site")
         try:
-            function = namespace[tool_name]
-            value = function(**message.get("kwargs", {}))
+            function = namespace.get(tool_name)
+            if self.tool_call_interceptor is not None:
+                intercepted = self.tool_call_interceptor(
+                    tool_name,
+                    kwargs,
+                    call_site if isinstance(call_site, dict) else None,
+                    function,
+                )
+                value = intercepted.value
+                replay_event_data = intercepted.event_data
+            else:
+                if function is None:
+                    raise KeyError(tool_name)
+                value = function(**kwargs)
+                replay_event_data = {}
             response = {"type": "result", "value": value}
+            event_data = {
+                "tool": tool_name,
+                "arguments": kwargs,
+                "success": True,
+                "result": value,
+                **replay_event_data,
+            }
         except Exception as exc:
-            response = {"type": "result", "error": f"{type(exc).__name__}: {exc}"}
+            error = f"{type(exc).__name__}: {exc}"
+            response = {"type": "result", "error": error}
+            event_data = {
+                "tool": tool_name,
+                "arguments": kwargs,
+                "success": False,
+                "error": error,
+            }
+        if self.observer is not None:
+            if isinstance(call_site, dict):
+                event_data["call_site"] = call_site
+            self.observer.emit(
+                "tool.called",
+                block_id=self.active_block_id,
+                data=event_data,
+            )
         self._send(process, response)
 
     @staticmethod
@@ -175,3 +244,4 @@ class PersistentIpcRuntime(BaseRuntime):
         self._process = None
         self._lines = None
         self.last_state = {}
+        self.last_execution_trace = {}
