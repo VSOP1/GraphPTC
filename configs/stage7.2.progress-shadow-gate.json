@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "stage": "7.2",
+  "mode": "offline-progress-shadow-gate",
+  "official_benchmark_result": false,
+  "acceptance": {
+    "all_offline": true,
+    "expected_episode_count": 20,
+    "model_visible_false": true,
+    "no_action_taken": true,
+    "capsule_fields_complete": true
+  }
+}

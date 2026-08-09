@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, Mapping
 
 from toolregistry import ToolRegistry
 
@@ -95,6 +95,13 @@ class CodeActPTCAgent(OriginalPTCAgent):
         structured_observation: bool = False,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
         demonstration_messages: Iterable[dict[str, Any]] = (),
+        post_block_message_factory: Callable[[PTCBlockTrace], str | None] | None = None,
+        post_block_message_on_error: bool = False,
+        block_observation_factory: Callable[[PTCBlockTrace], str | None] | None = None,
+        ptc_call_metadata_callback: (
+            Callable[[dict[str, Any]], Mapping[str, Any] | None] | None
+        ) = None,
+        adaptation_initial_observation: Callable[[], str] | None = None,
         observer: ExecutionObserver | None = None,
         active_repair_callback: (
             Callable[[str, PersistentIpcRuntime], dict[str, Any]] | None
@@ -121,6 +128,11 @@ class CodeActPTCAgent(OriginalPTCAgent):
             checkpoint_callback=checkpoint_callback,
             ptc_tool_spec=ptc_tool_spec,
             demonstration_messages=demonstration_messages,
+            post_block_message_factory=post_block_message_factory,
+            post_block_message_on_error=post_block_message_on_error,
+            block_observation_factory=block_observation_factory,
+            ptc_call_metadata_callback=ptc_call_metadata_callback,
+            adaptation_initial_observation=adaptation_initial_observation,
         )
 
     def _create_registry(

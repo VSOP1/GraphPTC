@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "stage": "7.6a-r2",
+  "mode": "frozen-trajectory-actionable-frontier-r2-gate",
+  "official_benchmark_result": false,
+  "development_subset": true,
+  "inputs": {
+    "placebo_auto": {
+      "events_path": "runs/browsecomp_plus/graphptc-placebo-auto-v2-turn30-pilot20/events.jsonl",
+      "events_sha256": "1b9f19eca788bb053216dd79e75cb84652bee5670bd4475f123dbcb0a34625a4"
+    },
+    "graph_auto": {
+      "events_path": "runs/browsecomp_plus/graphptc-graph-auto-v2-turn30-pilot20/events.jsonl",
+      "events_sha256": "bd2ebdd3ea0db82709866f700887146a3bf767f0a62342db0650c54e4b035e52"
+    }
+  },
+  "frontier": {
+    "max_items": 3,
+    "trigger_reasons": ["all_queries_repeated", "all_searches_zero_novelty", "repeated_fetch"],
+    "candidate_ranking": ["source_call_desc", "result_rank_asc", "docid_asc"],
+    "baselines": ["r1_graph", "recency", "first_seen"]
+  },
+  "acceptance": {
+    "expected_episodes_per_arm": 20,
+    "minimum_trigger_rate": 0.1,
+    "maximum_trigger_rate": 0.6,
+    "minimum_target_opportunities": 20,
+    "minimum_candidate_top3_target_coverage": 0.5,
+    "require_candidate_coverage_at_least_best_baseline": true,
+    "require_concrete_lineage_for_every_candidate_item": true,
+    "maximum_frontier_items": 3,
+    "require_deterministic_reprojection": true,
+    "gold_features_allowed": false
+  },
+  "boundary": "retrospective offline development gate on frozen trajectories; no model-visible changes, model calls, online enablement, or outcome claim"
+}

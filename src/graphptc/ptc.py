@@ -7,7 +7,7 @@ import re
 import time
 from dataclasses import asdict, dataclass, field
 from collections.abc import Callable, Iterable
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 from toolregistry import ToolRegistry
 
@@ -209,6 +209,13 @@ class OriginalPTCAgent:
         checkpoint_callback: Callable[[dict[str, Any]], None] | None = None,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
         demonstration_messages: Iterable[dict[str, Any]] = (),
+        post_block_message_factory: Callable[[PTCBlockTrace], str | None] | None = None,
+        post_block_message_on_error: bool = False,
+        block_observation_factory: Callable[[PTCBlockTrace], str | None] | None = None,
+        ptc_call_metadata_callback: (
+            Callable[[dict[str, Any]], Mapping[str, Any] | None] | None
+        ) = None,
+        adaptation_initial_observation: Callable[[], str] | None = None,
     ) -> None:
         self._model = model
         self._search_tools = search_tools
@@ -229,6 +236,11 @@ class OriginalPTCAgent:
         self._checkpoint_callback = checkpoint_callback
         self._ptc_tool_spec = ptc_tool_spec
         self._demonstration_messages = tuple(demonstration_messages)
+        self._post_block_message_factory = post_block_message_factory
+        self._post_block_message_on_error = post_block_message_on_error
+        self._block_observation_factory = block_observation_factory
+        self._ptc_call_metadata_callback = ptc_call_metadata_callback
+        self._adaptation_initial_observation = adaptation_initial_observation
 
     def run(self, task: str) -> AgentResult:
         started = time.perf_counter()
@@ -241,6 +253,10 @@ class OriginalPTCAgent:
             *copy.deepcopy(self._demonstration_messages),
             task_message,
         ]
+        if self._adaptation_initial_observation is not None:
+            messages.append(
+                {"role": "user", "content": self._adaptation_initial_observation()}
+            )
         force_finalize = False
         finalization_requested = False
 
@@ -356,6 +372,7 @@ class OriginalPTCAgent:
                     break
 
                 for call in turn.tool_calls:
+                    trace: PTCBlockTrace | None = None
                     if finalization_requested:
                         output = "Error: research tools are unavailable during finalization"
                         is_error = True
@@ -380,13 +397,22 @@ class OriginalPTCAgent:
                             self._runtime.code_timeout_seconds, remaining
                         )
                         self._active_tool_call_id = call.id
+                        call_input = dict(call.input)
+                        if self._ptc_call_metadata_callback is not None:
+                            prepared = self._ptc_call_metadata_callback(call_input)
+                            if prepared is not None:
+                                call_input.update(prepared)
                         output, is_error, trace = self._execute_block(
-                            turn_number, call.input.get("code")
+                            turn_number, call_input.get("code")
                         )
                         result.blocks.append(trace)
                         result.ptc_blocks += 1
                     if is_error and not output.startswith(("Error:", "PTC_ERROR ")):
                         output = f"Error: {output}"
+                    if trace is not None and self._block_observation_factory is not None:
+                        block_observation = self._block_observation_factory(trace)
+                        if block_observation:
+                            output = f"{output.rstrip()}\n\n{block_observation}"
                     messages.append(
                         {
                             "role": "tool",
@@ -394,6 +420,16 @@ class OriginalPTCAgent:
                             "content": output,
                         }
                     )
+                    if (
+                        (not is_error or self._post_block_message_on_error)
+                        and trace is not None
+                        and self._post_block_message_factory is not None
+                    ):
+                        post_block_message = self._post_block_message_factory(trace)
+                        if post_block_message:
+                            messages.append(
+                                {"role": "user", "content": post_block_message}
+                            )
                 if result.finish_reason == "task_timeout":
                     break
                 self._checkpoint(messages, result, turn_number + 1)

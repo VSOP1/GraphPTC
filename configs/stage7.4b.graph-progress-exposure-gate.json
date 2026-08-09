@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "stage": "7.4b",
+  "mode": "automatic-graph-progress-exposure-micro-gate",
+  "official_benchmark_result": false,
+  "arms": ["control", "placebo_auto", "graph_auto"],
+  "acceptance": {
+    "successful_blocks": 2,
+    "failed_blocks": 1,
+    "capsules_per_successful_block": 1,
+    "capsules_per_failed_block": 0,
+    "capsule_chars": 512,
+    "raw_stdout_unchanged": true,
+    "tool_ledger_unchanged": true,
+    "same_placebo_graph_schema": true,
+    "no_gold_features": true,
+    "no_forced_stop": true
+  }
+}

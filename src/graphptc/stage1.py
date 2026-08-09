@@ -30,6 +30,7 @@ def run_stage1_browsecomp_plus(
     progress: ProgressCallback | None = None,
     shadow_output_path: str | Path | None = None,
     active_repair_output_path: str | Path | None = None,
+    checkpoint_archive_dir: str | Path | None = None,
 ) -> BenchmarkRunSummary:
     """Run the frozen few-shot PTC variant with append-only Stage 1 events."""
     if config.browsecomp_plus.prompt_variant != "fewshot-ptc-v1":
@@ -180,6 +181,9 @@ def run_stage1_browsecomp_plus(
             active_repair_callback_factory
             if active_destination is not None
             else None
+        ),
+        checkpoint_archive_dir=(
+            Path(checkpoint_archive_dir) if checkpoint_archive_dir is not None else None
         ),
     )
 

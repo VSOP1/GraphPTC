@@ -60,6 +60,27 @@ def test_stage1_adapter_reuses_fewshot_runner_and_writes_events(
     assert event["task_id"] == "qid-1"
     assert captured["post_episode_callback"] is None
     assert captured["active_repair_callback_factory"] is None
+    assert captured["checkpoint_archive_dir"] is None
+
+
+def test_stage1_passes_checkpoint_archive_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = ExperimentConfig.from_toml(
+        "configs/browsecomp_plus.fewshot-ptc-v1-turn30-pilot20.toml"
+    )
+    captured: dict[str, Any] = {}
+
+    def fake_run(received: ExperimentConfig, **kwargs: Any) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("graphptc.stage1.run_browsecomp_plus_benchmark", fake_run)
+    archive = tmp_path / "archive"
+
+    run_stage1_browsecomp_plus(config, checkpoint_archive_dir=archive)
+
+    assert captured["checkpoint_archive_dir"] == archive
 
 
 def test_stage1_shadow_is_opt_in_and_does_not_change_runner_result(

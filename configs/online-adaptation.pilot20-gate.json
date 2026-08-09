@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "mode": "matched-online-graph-adaptation-pilot20-gate",
+  "official_benchmark_result": false,
+  "development_subset": true,
+  "example_ids": [
+    "896", "1214", "772", "1019", "152", "1234", "1122", "653", "278", "160",
+    "380", "315", "872", "926", "991", "255", "1163", "1204", "181", "266"
+  ],
+  "acceptance": {
+    "expected_examples_per_arm": 20,
+    "prompt_variant": "fewshot-ptc-v1",
+    "adapt_observation_per_completed_block": true,
+    "control_adaptation_absent": true,
+    "allowed_actions": ["ANSWER", "CONTINUE", "INSPECT", "PATCH", "REUSE_REPLAY"],
+    "maximum_failed_examples_per_arm": 0,
+    "maximum_adapt_tool_call_increase_fraction": 0.1,
+    "accuracy_noninferiority_margin_questions": 1
+  },
+  "boundary": "real twenty-question development pilot gate; passing permits further mainline Adapt iteration but not baseline replacement or official benchmark claims"
+}

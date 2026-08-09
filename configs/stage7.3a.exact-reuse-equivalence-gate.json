@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "stage": "7.3a",
+  "mode": "frozen-exact-reuse-equivalence",
+  "official_benchmark_result": false,
+  "example_ids": ["152", "255", "872", "896", "1163"],
+  "acceptance": {
+    "expected_cases": 5,
+    "block_outputs_equal_all": true,
+    "runtime_results_equal_all": true,
+    "final_state_equal_all": true,
+    "logical_budget_equal_all": true,
+    "duplicate_results_stable_all": true,
+    "cache_hits_positive_all": true,
+    "external_tool_calls": 0
+  }
+}

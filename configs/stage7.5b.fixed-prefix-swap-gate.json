@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "stage": "7.5b",
+  "mode": "fixed-prefix-last-capsule-swap-micro-gate",
+  "official_benchmark_result": false,
+  "development_subset": true,
+  "capture_example_ids": ["896", "1214", "772", "1019"],
+  "selection": {
+    "per_episode": ["earliest_capsule", "earliest_positive_stagnation_capsule"],
+    "deduplicate_same_prefix": true,
+    "stagnation_fields": ["repeated_queries", "zero_novelty_searches"]
+  },
+  "intervention": {
+    "graph": "retain the exact last graph capsule",
+    "placebo": "replace only the exact last capsule with the fixed-length neutral placebo capsule",
+    "calls_per_condition": 1,
+    "execute_generated_tools": false,
+    "condition_order": "sha256(prefix_id) parity"
+  },
+  "acceptance": {
+    "prompt_variant": "fewshot-ptc-v1",
+    "graph_progress_mode": "graph_auto",
+    "stateful_tool_support": false,
+    "expected_capture_examples": 4,
+    "minimum_paired_prefixes": 4,
+    "capsule_chars": 512,
+    "require_exact_non_capsule_prefix_match": true,
+    "maximum_api_errors": 0
+  },
+  "boundary": "single-next-action mechanism test only; no tool execution, answer scoring, or outcome promotion"
+}

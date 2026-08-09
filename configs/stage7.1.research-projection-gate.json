@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "stage": "7.1",
+  "mode": "offline-research-layer-projection-gate",
+  "official_benchmark_result": false,
+  "acceptance": {
+    "all_offline": true,
+    "expected_episode_count": 20,
+    "graph_node_ids_unique": true,
+    "graph_edges_closed": true,
+    "no_model_visible_fields": true
+  }
+}

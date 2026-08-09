@@ -180,6 +180,57 @@ def test_agent_autonomously_runs_multiple_ptc_blocks() -> None:
     assert exposed_tools[0]["function"]["name"] == "programmatic_tool_call"
 
 
+def test_agent_appends_post_block_message_without_changing_stdout() -> None:
+    tools = FakeSearchTools(calls=[])
+    model = ScriptedModel(
+        [
+            _tool_turn("tool-1", "print('raw stdout')"),
+            _answer_turn("done"),
+        ]
+    )
+    agent = OriginalPTCAgent(
+        model=model,
+        search_tools=tools,  # type: ignore[arg-type]
+        runtime=RuntimeConfig(max_turns=3, max_ptc_blocks=2),
+        post_block_message_factory=lambda _: "GRAPH_PROGRESS_SNAPSHOT fixture",
+    )
+
+    result = agent.run("research")
+
+    assert result.blocks[0].stdout == "raw stdout\n"
+    assert model.messages_seen[1][-2]["role"] == "tool"
+    assert model.messages_seen[1][-2]["content"] == "raw stdout\n"
+    assert model.messages_seen[1][-1] == {
+        "role": "user",
+        "content": "GRAPH_PROGRESS_SNAPSHOT fixture",
+    }
+
+
+def test_agent_can_append_adaptation_message_after_failed_block() -> None:
+    tools = FakeSearchTools(calls=[])
+    model = ScriptedModel(
+        [
+            _tool_turn("tool-1", "raise ValueError('bad code')"),
+            _answer_turn("recovered"),
+        ]
+    )
+    agent = OriginalPTCAgent(
+        model=model,
+        search_tools=tools,  # type: ignore[arg-type]
+        runtime=RuntimeConfig(max_turns=3, max_ptc_blocks=2),
+        post_block_message_factory=lambda _: "GRAPH_ADAPT_OBSERVATION fixture",
+        post_block_message_on_error=True,
+    )
+
+    result = agent.run("research")
+
+    assert result.status == "success"
+    assert model.messages_seen[1][-1] == {
+        "role": "user",
+        "content": "GRAPH_ADAPT_OBSERVATION fixture",
+    }
+
+
 def test_agent_executes_multiple_ptc_blocks_from_one_api_turn() -> None:
     tools = FakeSearchTools(calls=[])
     model = ScriptedModel(

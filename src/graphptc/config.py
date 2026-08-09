@@ -58,6 +58,9 @@ class RuntimeConfig:
     compaction_max_tokens: int = 4_096
     max_compactions: int = 8
     max_total_output_tokens: int | None = None
+    reuse_exact_results: bool = False
+    graph_progress_mode: str = "off"
+    graph_adaptation_mode: str = "off"
 
 
 @dataclass(frozen=True)
