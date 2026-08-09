@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -169,6 +170,79 @@ def test_prompt_variant_changes_frozen_run_signature(tmp_path: Path) -> None:
     assert direct != original
 
 
+def test_online_graph_adaptation_has_typed_research_contract(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    adapted = replace(
+        config,
+        runtime=replace(config.runtime, graph_adaptation_mode="online"),
+        browsecomp_plus=replace(config.browsecomp_plus, prompt_variant="fewshot-ptc-v1"),
+    )
+
+    manifest = benchmark._runtime_tool_manifest(adapted)
+    spec = benchmark._ptc_tool_spec(adapted)
+
+    names = [item["name"] for item in manifest]
+    assert names[-7:] == [
+        "graph_add_constraint",
+        "graph_add_candidate",
+        "graph_add_evidence",
+        "graph_frontier",
+        "graph_trace",
+        "graph_load_artifact",
+        "graph_alternatives",
+    ]
+    parameters = spec["function"]["parameters"]
+    assert parameters["required"] == [
+        "code",
+        "action",
+            "target",
+            "expected_change",
+            "constraint_id",
+        "constraint",
+    ]
+    assert parameters["properties"]["action"]["enum"] == [
+        "CONTINUE",
+        "INSPECT",
+        "PATCH",
+        "REUSE_REPLAY",
+    ]
+    system_prompt, _ = benchmark._prompt_pair(adapted)
+    assert "<graph_runtime_definitions>" in system_prompt
+    demos = benchmark._demonstration_messages(adapted)
+    demo_calls = {
+        message["tool_calls"][0]["id"]: message["tool_calls"][0]["function"]
+        for message in demos
+        if message.get("role") == "assistant" and message.get("tool_calls")
+    }
+    arguments = json.loads(demo_calls["demo_batch_filter"]["arguments"])
+    assert all(call["name"] == "programmatic_tool_call" for call in demo_calls.values())
+    assert arguments["target"] == "constraint:inspection"
+    assert arguments["constraint_id"] == "inspection"
+    assert len(arguments["research_updates"]["constraints"]) == 2
+    assert "graph_add_constraint" in arguments["code"]
+    assert "graph_add_evidence" in arguments["code"]
+    followup = json.loads(demo_calls["demo_graph_inspect"]["arguments"])
+    assert followup["action"] == "INSPECT"
+    assert benchmark._run_signature(adapted, RETRIEVER_METADATA) != benchmark._run_signature(
+        config, RETRIEVER_METADATA
+    )
+
+
+def test_online_graph_adaptation_rejects_parallel_progress_channel(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    invalid = replace(
+        config,
+        runtime=replace(
+            config.runtime,
+            graph_adaptation_mode="online",
+            graph_progress_mode="graph_auto",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="requires graph_progress_mode=off"):
+        benchmark._ptc_tool_spec(invalid)
+
+
 def test_unknown_prompt_variant_is_rejected(tmp_path: Path) -> None:
     config = _config(tmp_path)
     config = replace(
@@ -178,6 +252,26 @@ def test_unknown_prompt_variant_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Unknown BrowseComp-Plus prompt variant"):
         benchmark._run_signature(config, RETRIEVER_METADATA)
+
+
+def test_checkpoint_archive_preserves_exact_snapshot(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "checkpoints" / "task.json"
+    archive = tmp_path / "archive"
+    payload = {
+        "run_signature": "signature",
+        "example_id": "qid-1",
+        "next_turn": 3,
+        "messages": [{"role": "user", "content": "GRAPH_PROGRESS_SNAPSHOT exact"}],
+        "agent": {"ptc_blocks": 2},
+    }
+
+    benchmark._write_checkpoint_bundle(checkpoint, payload, archive_dir=archive)
+
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == payload
+    archived = list(archive.glob("*/turn-003.json.gz"))
+    assert len(archived) == 1
+    with gzip.open(archived[0], "rt", encoding="utf-8") as handle:
+        assert json.load(handle) == payload
 
 
 def _config(tmp_path: Path) -> ExperimentConfig:

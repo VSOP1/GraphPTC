@@ -7,6 +7,7 @@ from graphptc.codeact_agent import CodeActPTCAgent
 from graphptc.config import RuntimeConfig
 from graphptc.model import ModelTurn, TokenUsage, ToolCall
 from graphptc.observability import ExecutionObserver, InMemoryEventSink
+from graphptc.online_adaptation import OnlineGraphAdaptation
 from graphptc.persistent_runtime import PersistentIpcRuntime
 
 
@@ -38,7 +39,7 @@ class FakeLocalTools:
         return {"docid": docid, "content": f"content for {docid}"}
 
 
-def tool_turn(call_id: str, code: str) -> ModelTurn:
+def tool_turn(call_id: str, code: str, **metadata: str) -> ModelTurn:
     return ModelTurn(
         assistant_message={"role": "assistant", "content": None},
         text="",
@@ -46,7 +47,7 @@ def tool_turn(call_id: str, code: str) -> ModelTurn:
             ToolCall(
                 id=call_id,
                 name="programmatic_tool_call",
-                input={"code": code},
+                input={"code": code, **metadata},
             )
         ],
         usage=TokenUsage(input_tokens=10, output_tokens=5),
@@ -354,3 +355,74 @@ def test_timeout_kills_session_and_next_block_starts_clean() -> None:
 
     assert timed_out.timed_out is True
     assert restarted.stdout.strip() == "False"
+
+
+def test_online_graph_adaptation_selects_and_executes_inspect_without_extra_turn() -> None:
+    tools = FakeLocalTools()
+    model = ScriptedModel(
+        [
+            tool_turn(
+                "call-1",
+                "print(graph_add_constraint(constraint_id='identity', "
+                "description='identify alpha')); print(search(query='alpha'))",
+                action="CONTINUE",
+                target="task",
+                expected_change="create and investigate the identity constraint",
+            ),
+            tool_turn(
+                "call-2",
+                "print(search(query='alpha'))",
+                action="CONTINUE",
+                target="constraint:identity",
+                expected_change="retry the identity search",
+            ),
+            tool_turn(
+                "call-3",
+                "print(search(query='beta'))",
+                action="CONTINUE",
+                target="constraint:identity",
+                expected_change="continue searching",
+            ),
+            answer_turn(),
+        ]
+    )
+    adaptation = OnlineGraphAdaptation(tools, max_tool_calls=10)
+    agent = CodeActPTCAgent(
+        model=model,
+        search_tools=tools,  # type: ignore[arg-type]
+        runtime=RuntimeConfig(max_turns=5, max_ptc_blocks=4),
+        runtime_functions=(
+            adaptation.search,
+            adaptation.fetch,
+            adaptation.graph_add_constraint,
+            adaptation.graph_add_candidate,
+            adaptation.graph_add_evidence,
+            adaptation.graph_frontier,
+            adaptation.graph_trace,
+            adaptation.graph_load_artifact,
+        ),
+        block_observation_factory=adaptation.observe,
+        ptc_call_metadata_callback=adaptation.prepare_program_action,
+        adaptation_initial_observation=adaptation.initial_observation,
+    )
+
+    result = agent.run("test")
+    adaptation.finish(answered=result.status == "success")
+
+    assert result.status == "success"
+    assert any(
+        "GRAPH_DELTA " in message.get("content", "")
+        for request in model.messages_seen
+        for message in request
+        if isinstance(message.get("content"), str)
+    )
+    assert "constraint:identity" in result.blocks[2].stdout
+    assert len(tools.calls) == 2
+    assert adaptation.telemetry()["action_distribution"] == {
+        "CONTINUE": 2,
+        "INSPECT": 1,
+        "ANSWER": 1,
+    }
+    graph = adaptation.telemetry()["research_graph"]
+    assert graph["interface_calls"]["graph_trace"] == 1
+    assert result.model_requests == 4
