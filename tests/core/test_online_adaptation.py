@@ -68,7 +68,7 @@ def test_agent_authored_graph_is_source_verified_and_emitted_as_delta() -> None:
     message = adaptation.observe(SimpleNamespace(success=True))
     payload = json.loads(message.removeprefix("GRAPH_DELTA "))
 
-    assert payload["control_contract"] == "graph-adapt-v7"
+    assert payload["control_contract"] == "graph-adapt-v11"
     assert payload["declared_action"]["target_valid"] is True
     assert payload["execution"]["block_calls"]["search_calls"] == 1
     assert evidence["verified"] is True
@@ -138,6 +138,17 @@ def test_frontier_trace_and_alternatives_are_targeted_graph_queries() -> None:
     assert alternatives["alternatives"][0]["id"] == second["node_id"]
 
 
+def test_continue_targets_preserve_the_current_unresolved_branch() -> None:
+    graph = ResearchGraphState(FakeTools(), task="Who founded Alpha?")
+    first = graph.graph_add_constraint(constraint_id="first", description="first fact")
+    second = graph.graph_add_constraint(constraint_id="second", description="second fact")
+    graph.set_action_target(second["node_id"])
+
+    targets = graph.action_targets()["CONTINUE"]
+
+    assert targets == [second["node_id"], first["node_id"]]
+
+
 def test_explicit_action_target_validation_is_side_channel_telemetry() -> None:
     adaptation = _adaptation()
     adaptation.record_action(
@@ -192,7 +203,7 @@ def test_graph_delta_is_bounded() -> None:
     message = adaptation.observe(SimpleNamespace(success=True))
 
     assert len(message) <= 1_500
-    assert json.loads(message.removeprefix("GRAPH_DELTA "))["control_contract"] == "graph-adapt-v7"
+    assert json.loads(message.removeprefix("GRAPH_DELTA "))["control_contract"] == "graph-adapt-v11"
 
 
 def test_initial_assessment_exposes_bounded_action_contract() -> None:
@@ -202,12 +213,12 @@ def test_initial_assessment_exposes_bounded_action_contract() -> None:
         adaptation.initial_observation().removeprefix("GRAPH_ASSESSMENT ")
     )
 
-    assert payload["control_contract"] == "graph-adapt-v7"
-    assert payload["available_actions"] == ["CONTINUE", "INSPECT", "ANSWER"]
+    assert payload["control_contract"] == "graph-adapt-v11"
+    assert payload["available_actions"] == ["CONTINUE", "ANSWER"]
     assert payload["valid_targets"]["CONTINUE"] == ["task"]
-    assert payload["selected_action"] == "CONTINUE"
-    assert payload["selected_target"] == "task"
-    assert payload["target_context"]["target"]["id"] == "task"
+    assert "selected_action" not in payload
+    assert payload["action_opportunities"][0]["action"] == "CONTINUE"
+    assert payload["action_opportunities"][0]["target_context"]["target"]["id"] == "task"
 
 
 def test_continue_target_context_exposes_only_related_research_lineage() -> None:
@@ -236,14 +247,21 @@ def test_continue_target_context_exposes_only_related_research_lineage() -> None
     context = graph.target_context(founder["node_id"])
 
     assert context["target"]["id"] == founder["node_id"]
-    assert [item["data"]["text"] for item in context["query_history"]] == [
+    memory = context["retrieval_memory"]
+    assert [item["query"] for item in memory["recent_attempts"]] == [
         "Alpha founder",
         "Alpha founder biography",
     ]
-    assert context["reusable_artifact_ids"] == [
+    assert [item["artifact_id"] for item in memory["recent_attempts"]] == [
         "artifact:search:1",
         "artifact:search:2",
     ]
+    assert [item["new_documents"] for item in memory["recent_attempts"]] == [1, 0]
+    assert memory["coverage"] == {
+        "retrieved_documents": 1,
+        "fetched_documents": 1,
+        "unfetched_documents": 0,
+    }
     assert context["unfetched_documents"] == []
     assert context["evidence"][0]["id"] == "evidence:e1"
 
@@ -273,8 +291,9 @@ def test_continue_target_context_is_pruned_to_observation_bound() -> None:
 
     assert len(message) <= 1_500
     payload = json.loads(message.removeprefix("GRAPH_ASSESSMENT "))
-    assert payload["target_context"]["target"]["id"] == constraint["node_id"]
-    assert len(payload["target_context"]["query_history"]) < 8
+    context = payload["action_opportunities"][0]["target_context"]
+    assert context["target"]["id"] == constraint["node_id"]
+    assert len(context["retrieval_memory"]["recent_attempts"]) < 8
 
 
 def test_selected_inspect_must_be_implemented_by_graph_read() -> None:
@@ -312,15 +331,16 @@ def test_identical_semantic_declaration_is_idempotent() -> None:
     assert adaptation.telemetry()["research_graph"]["node_kinds"]["CONSTRAINT"] == 1
 
 
-def test_stagnation_contract_overrides_another_continue_with_inspect() -> None:
+def test_repeat_signal_offers_reuse_without_rewriting_model_program() -> None:
     adaptation = _adaptation()
     adaptation.initial_observation()
+    message = ""
     for _ in range(2):
         adaptation.record_action(
             {"action": "CONTINUE", "target": "task", "expected_change": "search"}
         )
         adaptation.search(query="Alpha founder")
-        adaptation.observe(SimpleNamespace(success=True))
+        message = adaptation.observe(SimpleNamespace(success=True))
 
     prepared = adaptation.prepare_program_action(
         {
@@ -331,36 +351,92 @@ def test_stagnation_contract_overrides_another_continue_with_inspect() -> None:
         }
     )
 
-    assert prepared["action"] == "INSPECT"
-    assert "graph_frontier" in prepared["code"]
-    assert adaptation.telemetry()["policy_overrides"] == 1
+    assessment = json.loads(message.removeprefix("GRAPH_DELTA "))["next_action_contract"]
+    assert "REUSE_REPLAY" in assessment["available_actions"]
+    assert prepared["action"] == "CONTINUE"
+    assert prepared["code"] == "print(search(query='again'))"
+    assert adaptation.telemetry()["policy_overrides"] == 0
 
 
-def test_selected_inspect_replaces_unaligned_retrieval_program() -> None:
+def test_model_selected_inspect_is_observed_but_program_is_not_rewritten() -> None:
     adaptation = _adaptation()
     adaptation.graph_add_constraint(
         constraint_id="founder", description="identify the founder"
     )
-    adaptation.record_action(
+    adaptation.initial_observation()
+
+    prepared = adaptation.prepare_program_action(
         {
+            "code": "print(search(query='more'))",
             "action": "INSPECT",
             "target": "constraint:founder",
             "expected_change": "inspect provenance",
         }
     )
 
-    prepared = adaptation.prepare_program_action(
+    assert prepared["action"] == "INSPECT"
+    assert prepared["code"] == "print(search(query='more'))"
+    telemetry = adaptation.telemetry()
+    assert telemetry["selection_mismatches"] == 0
+    assert telemetry["program_overrides"] == 0
+
+
+def test_retrieval_memory_consumption_distinguishes_new_query_from_repeat() -> None:
+    adaptation = _adaptation()
+    adaptation.initial_observation()
+    adaptation.prepare_program_action(
         {
-            "code": "print(search(query='more'))",
+            "code": "print(search(query='Alpha founder'))",
             "action": "CONTINUE",
-            "target": "constraint:founder",
+            "target": "task",
+            "expected_change": "find founder",
         }
     )
-
-    assert prepared["action"] == "INSPECT"
-    assert prepared["code"] == (
-        "print(graph_trace(node_id='constraint:founder'))"
+    adaptation.search(query="Alpha founder")
+    adaptation.observe(SimpleNamespace(success=True))
+    adaptation.prepare_program_action(
+        {
+            "code": "print(search(query='Alpha biography'))",
+            "action": "CONTINUE",
+            "target": "task",
+            "expected_change": "find a distinct source",
+        }
     )
-    telemetry = adaptation.telemetry()
-    assert telemetry["selection_mismatches"] == 1
-    assert telemetry["program_overrides"] == 1
+    adaptation.search(query="Alpha biography")
+    adaptation.observe(SimpleNamespace(success=True))
+
+    metrics = adaptation.telemetry()["retrieval_memory_consumption"]
+    assert metrics["visible_blocks"] == 1
+    assert metrics["target_matched_blocks"] == 1
+    assert metrics["differentiated_queries"] == 1
+    assert metrics["aligned_blocks"] == 1
+    assert metrics["repeat_only_blocks"] == 0
+
+
+def test_retrieval_memory_consumption_marks_known_document_fetch() -> None:
+    adaptation = _adaptation()
+    adaptation.initial_observation()
+    adaptation.prepare_program_action(
+        {
+            "code": "print(search(query='Alpha founder'))",
+            "action": "CONTINUE",
+            "target": "task",
+            "expected_change": "find founder",
+        }
+    )
+    adaptation.search(query="Alpha founder")
+    adaptation.observe(SimpleNamespace(success=True))
+    adaptation.prepare_program_action(
+        {
+            "code": "print(fetch(docid='d1'))",
+            "action": "CONTINUE",
+            "target": "task",
+            "expected_change": "inspect the known document",
+        }
+    )
+    adaptation.fetch(docid="d1")
+    adaptation.observe(SimpleNamespace(success=True))
+
+    metrics = adaptation.telemetry()["retrieval_memory_consumption"]
+    assert metrics["known_document_fetches"] == 1
+    assert metrics["aligned_blocks"] == 1

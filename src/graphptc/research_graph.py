@@ -34,12 +34,27 @@ class ResearchGraphState:
 
     def search(self, *, query: str) -> list[dict[str, Any]]:
         """Search and record query, document, intent, and reusable artifact nodes."""
+        target = self._current_action_target()
+        prior_document_ids = self._target_document_ids(target)
         results = self._tools.search(query=query)
         self._query_count += 1
         query_id = f"query:{self._query_count}"
         artifact_id = f"artifact:search:{self._query_count}"
-        target = self._current_action_target()
-        self._add_node(query_id, "QUERY", {"text": str(query)[:500]})
+        result_docids = {
+            self._document_id(str(item.get("docid", "")))
+            for item in results
+            if item.get("docid")
+        }
+        self._add_node(
+            query_id,
+            "QUERY",
+            {
+                "text": str(query)[:500],
+                "result_count": len(result_docids),
+                "new_documents_for_target": len(result_docids - prior_document_ids),
+                "repeated_documents_for_target": len(result_docids & prior_document_ids),
+            },
+        )
         if target is not None:
             self._add_edge("intends_to_resolve", query_id, target)
         for rank, item in enumerate(results, start=1):
@@ -70,7 +85,11 @@ class ResearchGraphState:
         self._fetch_count += 1
         artifact_id = f"artifact:fetch:{self._fetch_count}"
         document_id = self._document_id(key)
-        self._add_node(document_id, "DOCUMENT", {"docid": key, "fetched": True})
+        self._add_node(
+            document_id,
+            "DOCUMENT",
+            {"docid": key, "fetched": True},
+        )
         self._fetched_content[key] = content
         self._artifacts[artifact_id] = copy.deepcopy(result)
         self._add_node(
@@ -79,6 +98,9 @@ class ResearchGraphState:
             {"operation": "fetch", "docid": key},
         )
         self._add_edge("materializes", document_id, artifact_id)
+        target = self._current_action_target()
+        if target is not None:
+            self._add_edge("investigates", document_id, target)
         return result
 
     def graph_add_constraint(self, *, constraint_id: str, description: str) -> dict[str, Any]:
@@ -296,9 +318,12 @@ class ResearchGraphState:
             for node_id, node in self._nodes.items()
             if node["kind"] in {"CONSTRAINT", "CANDIDATE"}
         ][-self._max_items :]
-        continue_targets = [
-            item["id"] for item in frontier["unresolved_constraints"]
-        ] or ["task"]
+        continue_targets = [item["id"] for item in frontier["unresolved_constraints"]]
+        current = self._current_action_target()
+        if current in continue_targets:
+            continue_targets = [current, *[item for item in continue_targets if item != current]]
+        if not continue_targets:
+            continue_targets = ["task"]
         return {
             "ANSWER": ["task"],
             "CONTINUE": continue_targets,
@@ -328,14 +353,14 @@ class ResearchGraphState:
     def target_context(self, target_id: str) -> dict[str, Any]:
         """Return bounded research lineage for the selected action target."""
         target = self._resolve_id(target_id)
-        query_ids = [
+        all_query_ids = [
             edge["source"]
             for edge in self._edges
             if edge["type"] == "intends_to_resolve" and edge["target"] == target
-        ][-self._max_items :]
+        ]
+        query_ids = all_query_ids[-self._max_items :]
         query_id_set = set(query_ids)
         source_queries_by_document: dict[str, list[str]] = {}
-        artifact_ids: list[str] = []
         for edge in self._edges:
             if edge["source"] not in query_id_set:
                 continue
@@ -343,19 +368,19 @@ class ResearchGraphState:
                 source_queries_by_document.setdefault(edge["target"], []).append(
                     edge["source"]
                 )
-            elif edge["type"] == "produces":
-                artifact_ids.append(edge["target"])
+        for edge in self._edges:
+            if edge["type"] == "investigates" and edge["target"] == target:
+                source_queries_by_document.setdefault(edge["source"], [])
         unfetched_documents = []
         for document_id, source_query_ids in source_queries_by_document.items():
             node = self._nodes.get(document_id)
             if node is None:
                 continue
             docid = str(node["data"].get("docid", ""))
-            if docid in self._fetched_content:
-                continue
             item = self._compact_node(node)
             item["source_query_ids"] = source_query_ids[-self._max_items :]
-            unfetched_documents.append(item)
+            if docid not in self._fetched_content:
+                unfetched_documents.append(item)
         evidence_ids = [
             edge["source"]
             for edge in self._edges
@@ -363,20 +388,73 @@ class ResearchGraphState:
             and edge["target"] == target
             and self._nodes.get(edge["source"], {}).get("kind") == "EVIDENCE"
         ]
+        all_document_ids = self._target_document_ids(target)
+        attempts = []
+        for query_id in query_ids:
+            query_node = self._nodes.get(query_id)
+            if query_node is None:
+                continue
+            artifacts = [
+                edge["target"]
+                for edge in self._edges
+                if edge["type"] == "produces" and edge["source"] == query_id
+            ]
+            attempts.append(
+                {
+                    "query_id": query_id,
+                    "query": query_node["data"].get("text", ""),
+                    "result_count": query_node["data"].get("result_count", 0),
+                    "new_documents": query_node["data"].get(
+                        "new_documents_for_target", 0
+                    ),
+                    "repeated_documents": query_node["data"].get(
+                        "repeated_documents_for_target", 0
+                    ),
+                    "artifact_id": artifacts[-1] if artifacts else None,
+                }
+            )
+        fetched_count = sum(
+            str(self._nodes[node_id]["data"].get("docid", "")) in self._fetched_content
+            for node_id in all_document_ids
+            if node_id in self._nodes
+        )
         return {
             "target": self._compact_node(self._nodes[target]),
-            "query_history": [
-                self._compact_node(self._nodes[query_id])
-                for query_id in query_ids
-                if query_id in self._nodes
-            ],
+            "retrieval_memory": {
+                "attempt_count": len(all_query_ids),
+                "recent_attempts": attempts,
+                "coverage": {
+                    "retrieved_documents": len(all_document_ids),
+                    "fetched_documents": fetched_count,
+                    "unfetched_documents": len(all_document_ids) - fetched_count,
+                },
+            },
             "unfetched_documents": unfetched_documents[: self._max_items],
             "evidence": [
                 self._compact_node(self._nodes[evidence_id])
                 for evidence_id in dict.fromkeys(evidence_ids)
             ][: self._max_items],
-            "reusable_artifact_ids": list(dict.fromkeys(artifact_ids))[-self._max_items :],
         }
+
+    def _target_document_ids(self, target_id: str | None) -> set[str]:
+        if target_id is None:
+            return set()
+        query_ids = {
+            edge["source"]
+            for edge in self._edges
+            if edge["type"] == "intends_to_resolve" and edge["target"] == target_id
+        }
+        document_ids = {
+            edge["target"]
+            for edge in self._edges
+            if edge["type"] == "retrieves" and edge["source"] in query_ids
+        }
+        document_ids.update(
+            edge["source"]
+            for edge in self._edges
+            if edge["type"] == "investigates" and edge["target"] == target_id
+        )
+        return document_ids
 
     def _current_action_target(self) -> str | None:
         value = getattr(self, "_action_target", None)
@@ -445,10 +523,15 @@ class ResearchGraphState:
 
     @staticmethod
     def _compact_node(node: Mapping[str, Any]) -> dict[str, Any]:
+        data = copy.deepcopy(node["data"])
+        if node["kind"] == "EVIDENCE":
+            data["quote"] = str(data.get("quote", ""))[:240]
+        elif node["kind"] == "DOCUMENT":
+            data["excerpt"] = str(data.get("excerpt", ""))[:240]
         return {
             "id": node["id"],
             "kind": node["kind"],
-            "data": copy.deepcopy(node["data"]),
+            "data": data,
         }
 
     def _count_interface(self, name: str) -> None:

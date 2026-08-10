@@ -195,10 +195,8 @@ def test_online_graph_adaptation_has_typed_research_contract(tmp_path: Path) -> 
     assert parameters["required"] == [
         "code",
         "action",
-            "target",
-            "expected_change",
-            "constraint_id",
-        "constraint",
+        "target",
+        "expected_change",
     ]
     assert parameters["properties"]["action"]["enum"] == [
         "CONTINUE",

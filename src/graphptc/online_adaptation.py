@@ -9,6 +9,18 @@ from .research_graph import ResearchGraphState
 
 
 ADAPT_ACTIONS = ("ANSWER", "CONTINUE", "INSPECT", "PATCH", "REUSE_REPLAY")
+_MEMORY_METRIC_KEYS = (
+    "visible_blocks",
+    "target_matched_blocks",
+    "target_mismatch_blocks",
+    "searches_after_exposure",
+    "differentiated_queries",
+    "exposed_query_repeats",
+    "known_document_fetches",
+    "exposed_artifact_reuses",
+    "aligned_blocks",
+    "repeat_only_blocks",
+)
 
 
 class OnlineGraphAdaptation:
@@ -41,9 +53,13 @@ class OnlineGraphAdaptation:
         self._last_execution: dict[str, Any] | None = None
         self._interface_counts_before_block: dict[str, int] = {}
         self._selection_mismatches = 0
-        self._policy_overrides = 0
-        self._program_overrides = 0
+        self._unavailable_action_requests = 0
         self._next_action_contract: dict[str, Any] | None = None
+        self._current_memory_exposure: dict[str, Any] | None = None
+        self._loaded_artifacts_since_observation: list[str] = []
+        self._memory_metrics: Counter[str] = Counter(
+            {key: 0 for key in _MEMORY_METRIC_KEYS}
+        )
 
     def search(self, *, query: str) -> list[dict[str, Any]]:
         return self._graph.search(query=query)
@@ -86,7 +102,9 @@ class OnlineGraphAdaptation:
         return self._graph.graph_trace(node_id=node_id)
 
     def graph_load_artifact(self, *, artifact_id: str) -> Any:
-        return self._graph.graph_load_artifact(artifact_id=artifact_id)
+        value = self._graph.graph_load_artifact(artifact_id=artifact_id)
+        self._loaded_artifacts_since_observation.append(str(artifact_id))
+        return value
 
     def graph_alternatives(self, *, target_id: str) -> dict[str, Any]:
         return self._graph.graph_alternatives(target_id=target_id)
@@ -147,16 +165,14 @@ class OnlineGraphAdaptation:
                     accepted_updates += 1
                 except (KeyError, TypeError, ValueError) as exc:
                     update_errors.append(str(exc))
-        policy_override = False
+        action_available = True
         if self._next_action_contract is not None:
             available = self._next_action_contract["available_actions"]
             if action not in available:
-                action = str(available[0])
-                policy_override = True
-                self._policy_overrides += 1
-                expected_change = "inspect graph progress before further retrieval"
+                action_available = False
+                self._unavailable_action_requests += 1
         self._rejected_research_updates += len(update_errors)
-        action_valid = action in ADAPT_ACTIONS
+        action_valid = action in ADAPT_ACTIONS and action_available
         target_valid = self._graph.has_node(target)
         if not target_valid:
             self._invalid_action_targets += 1
@@ -164,7 +180,7 @@ class OnlineGraphAdaptation:
             "before_block": self._observation_calls + 1,
             "action": action or "MISSING",
             "requested_action": requested_action or "MISSING",
-            "policy_override": policy_override,
+            "action_available": action_available,
             "target": target or None,
             "expected_change": expected_change or None,
             "action_valid": action_valid,
@@ -187,6 +203,7 @@ class OnlineGraphAdaptation:
             target_valid=target_valid,
             source=source,
         )
+
         return {
             "action": record["action"],
             "target": record["target"],
@@ -207,64 +224,32 @@ class OnlineGraphAdaptation:
     def prepare_program_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         requested_action = str(payload.get("action", "")).strip().upper()
         requested_target = str(payload.get("target", "")).strip()
-        contract = self._next_action_contract or self._assessment(execution=None)
-        selected_action = str(contract["selected_action"])
-        selected_target = str(contract["selected_target"])
-        selection_payload = dict(payload)
-        selection_payload["action"] = selected_action
-        selection_payload["target"] = selected_target
-        if requested_action != selected_action:
-            selection_payload["expected_change"] = contract["reason"]
+        exposure = _memory_exposure(
+            self._next_action_contract,
+            requested_target=requested_target,
+        )
         pending_action = (
             self._current_action is not None
             and self._current_action.get("before_block") == self._observation_calls + 1
             and "execution_aligned" not in self._current_action
         )
         if not pending_action:
-            self.record_action(selection_payload, source="graph_assessor")
+            self.record_action(payload, source="model_tool_call")
         assert self._current_action is not None
-        policy_override = (
-            requested_action != selected_action or requested_target != selected_target
-        )
+        self._current_memory_exposure = exposure
         self._current_action["requested_action"] = requested_action or "MISSING"
         self._current_action["requested_target"] = requested_target or None
-        self._current_action["policy_override"] = policy_override
-        if policy_override:
-            self._policy_overrides += 1
-        action = requested_action
-        target = requested_target
-        if action != self._current_action["action"] or target != (
-            self._current_action["target"] or ""
-        ):
-            self._selection_mismatches += 1
-            self._current_action["program_metadata_matches"] = False
-        else:
-            self._current_action["program_metadata_matches"] = True
-        prepared = dict(payload)
-        selected_action = self._current_action["action"]
-        selected_target = self._current_action["target"] or "task"
-        code = str(payload.get("code", ""))
-        if selected_action == "INSPECT" and not re.search(
-            r"\bgraph_(?:frontier|trace|alternatives)\s*\(", code
-        ):
-            prepared["code"] = (
-                "print(graph_frontier())"
-                if selected_target == "task"
-                else f"print(graph_trace(node_id={selected_target!r}))"
-            )
-            self._program_overrides += 1
-            self._current_action["program_override"] = "graph_inspection"
-        elif selected_action == "REUSE_REPLAY" and not re.search(
-            r"\bgraph_load_artifact\s*\(", code
-        ):
-            prepared["code"] = (
-                f"print(graph_load_artifact(artifact_id={selected_target!r}))"
-            )
-            self._program_overrides += 1
-            self._current_action["program_override"] = "artifact_reuse"
-        prepared["action"] = selected_action
-        prepared["target"] = selected_target
-        return prepared
+        self._current_action["program_metadata_matches"] = True
+        self._current_action["retrieval_memory_exposure"] = {
+            "visible": exposure["visible"],
+            "target": exposure["target"],
+            "target_matched": exposure["target_matched"],
+            "attempt_count": exposure["attempt_count"],
+            "recent_query_count": len(exposure["queries"]),
+            "unfetched_document_count": len(exposure["unfetched_docids"]),
+            "reusable_artifact_count": len(exposure["artifact_ids"]),
+        }
+        return dict(payload)
 
     def observe(self, trace: Any) -> str:
         calls = list(self._tools.calls)
@@ -280,6 +265,8 @@ class OnlineGraphAdaptation:
         }
         self._last_execution = execution
         if self._current_action is not None:
+            memory_consumption = self._record_memory_consumption(recent_calls)
+            self._current_action["retrieval_memory_consumption"] = memory_consumption
             aligned, reason = self._execution_alignment(
                 self._current_action["action"], execution
             )
@@ -293,9 +280,9 @@ class OnlineGraphAdaptation:
         self._next_action_contract = next_action_contract
         payload = {
             "schema_version": 1,
-            "control_contract": "graph-adapt-v7",
+            "control_contract": "graph-adapt-v11",
             "block": self._observation_calls,
-            "declared_action": self._current_action,
+            "declared_action": _model_visible_action(self._current_action),
             "execution": execution,
             "research_graph_delta": self._graph.delta(),
             "next_action_contract": next_action_contract,
@@ -332,7 +319,7 @@ class OnlineGraphAdaptation:
     def telemetry(self) -> dict[str, Any]:
         return {
             "mode": "online",
-            "control_contract": "graph-adapt-v7",
+            "control_contract": "graph-adapt-v11",
             "observation_calls": self._observation_calls,
             "action_distribution": dict(self._actions),
             "action_history": list(self._action_history),
@@ -341,35 +328,137 @@ class OnlineGraphAdaptation:
             "aligned_actions": self._aligned_actions,
             "misaligned_actions": self._misaligned_actions,
             "selection_mismatches": self._selection_mismatches,
-            "policy_overrides": self._policy_overrides,
-            "program_overrides": self._program_overrides,
+            "unavailable_action_requests": self._unavailable_action_requests,
+            "policy_overrides": 0,
+            "program_overrides": 0,
             "max_observation_chars": self._max_observation_chars,
+            "retrieval_memory_consumption": dict(self._memory_metrics),
             "research_graph": self._graph.telemetry(),
+        }
+
+    def _record_memory_consumption(
+        self, recent_calls: list[Mapping[str, Any]]
+    ) -> dict[str, Any]:
+        exposure = self._current_memory_exposure or _empty_memory_exposure()
+        visible = bool(exposure["visible"])
+        target_matched = bool(exposure["target_matched"])
+        if visible:
+            self._memory_metrics["visible_blocks"] += 1
+            if target_matched:
+                self._memory_metrics["target_matched_blocks"] += 1
+            else:
+                self._memory_metrics["target_mismatch_blocks"] += 1
+
+        searches = [
+            call
+            for call in recent_calls
+            if call.get("operation") == "search" and call.get("success") is not False
+        ]
+        fetches = [
+            call
+            for call in recent_calls
+            if call.get("operation") == "fetch" and call.get("success") is not False
+        ]
+        repeated_queries = sum(
+            _normalize_query(call.get("query")) in exposure["queries"]
+            for call in searches
+        )
+        differentiated_queries = len(searches) - repeated_queries
+        fetched_known_documents = sum(
+            bool(_call_docids(call) & exposure["unfetched_docids"])
+            for call in fetches
+        )
+        reused_artifacts = sum(
+            artifact_id in exposure["artifact_ids"]
+            for artifact_id in self._loaded_artifacts_since_observation
+        )
+        aligned = bool(
+            visible
+            and target_matched
+            and (
+                differentiated_queries
+                or fetched_known_documents
+                or reused_artifacts
+            )
+        )
+        if visible and target_matched:
+            self._memory_metrics["searches_after_exposure"] += len(searches)
+            self._memory_metrics["differentiated_queries"] += differentiated_queries
+            self._memory_metrics["exposed_query_repeats"] += repeated_queries
+            self._memory_metrics["known_document_fetches"] += fetched_known_documents
+            self._memory_metrics["exposed_artifact_reuses"] += reused_artifacts
+            if aligned:
+                self._memory_metrics["aligned_blocks"] += 1
+            if repeated_queries and not (
+                differentiated_queries or fetched_known_documents or reused_artifacts
+            ):
+                self._memory_metrics["repeat_only_blocks"] += 1
+        self._loaded_artifacts_since_observation.clear()
+        self._current_memory_exposure = None
+        return {
+            "visible": visible,
+            "target_matched": target_matched,
+            "searches": len(searches),
+            "differentiated_queries": differentiated_queries,
+            "exposed_query_repeats": repeated_queries,
+            "known_document_fetches": fetched_known_documents,
+            "exposed_artifact_reuses": reused_artifacts,
+            "aligned": aligned,
         }
 
     def _assessment(self, *, execution: dict[str, Any] | None) -> dict[str, Any]:
         targets = self._graph.action_targets()
-        available = ["CONTINUE", "INSPECT", "ANSWER"]
-        reason = "research may continue"
+        opportunities: list[dict[str, Any]] = []
+        continue_target = targets["CONTINUE"][0]
+        opportunities.append(
+            {
+                "action": "CONTINUE",
+                "target": continue_target,
+                "reason": (
+                    "use target retrieval memory to resolve an evidence gap"
+                    if continue_target != "task"
+                    else "extend the current research state"
+                ),
+                "target_context": self._graph.target_context(continue_target),
+            }
+        )
+        if targets["INSPECT"] != ["task"]:
+            opportunities.append(
+                {
+                    "action": "INSPECT",
+                    "target": targets["INSPECT"][0],
+                    "reason": "inspect provenance or competing evidence before choosing a branch",
+                }
+            )
+        opportunities.append(
+            {
+                "action": "ANSWER",
+                "target": "task",
+                "reason": "finish only when the graph-backed evidence is sufficient",
+            }
+        )
         if execution is not None:
             calls = execution["block_calls"]
-            stagnated = bool(
-                calls["search_calls"]
-                and not calls["new_docids"]
-                and not calls["new_fetches"]
-            )
             if not execution["success"]:
-                available = ["PATCH", "INSPECT", "CONTINUE", "ANSWER"]
-                reason = "the previous block failed"
-            elif self._current_action is not None and (
-                self._current_action["action"] == "CONTINUE" and stagnated
+                opportunities.insert(
+                    0,
+                    {
+                        "action": "PATCH",
+                        "target": targets["PATCH"][0],
+                        "reason": "the previous executable block failed",
+                    },
+                )
+            if targets["REUSE_REPLAY"] and (
+                calls["repeated_queries"] or calls["repeated_fetches"]
             ):
-                available = ["INSPECT", "ANSWER"]
-                reason = "retrieval produced no new documents or fetches; inspect graph state"
-                if targets["REUSE_REPLAY"]:
-                    available.insert(1, "REUSE_REPLAY")
-            elif targets["REUSE_REPLAY"]:
-                available.insert(2, "REUSE_REPLAY")
+                opportunities.insert(
+                    1,
+                    {
+                        "action": "REUSE_REPLAY",
+                        "target": targets["REUSE_REPLAY"][0],
+                        "reason": "an equivalent dependency artifact is already materialized",
+                    },
+                )
         signals: dict[str, Any] = {}
         if execution is not None:
             calls = execution["block_calls"]
@@ -381,43 +470,22 @@ class OnlineGraphAdaptation:
                 "new_fetches": calls["new_fetches"],
                 "failed_tool_calls": calls["failed_tool_calls"],
             }
-        selected_action = next(
-            action for action in available if action != "ANSWER"
-        )
-        selected_targets = targets[selected_action]
-        selected_target = selected_targets[0]
-        if (
-            selected_action == "INSPECT"
-            and self._current_action is not None
-            and self._current_action.get("target")
-            and self._graph.has_node(str(self._current_action["target"]))
-        ):
-            selected_target = str(self._current_action["target"])
         instruction = (
-            "The graph assessor selected the next action. The next programmatic_tool_call "
-            "must implement selected_action on selected_target."
+            "Choose the next action using the graph-grounded opportunities. The runtime does "
+            "not choose or rewrite the program; action and target metadata must describe the "
+            "program that you actually execute."
         )
-        target_context: dict[str, Any] | None = None
-        if selected_action == "CONTINUE":
-            instruction += (
-                " Prefer the bounded target_context before unrelated broad retrieval: fetch a "
-                "relevant unfetched document or refine the recorded query history."
-            )
-            target_context = self._graph.target_context(selected_target)
+        available = list(dict.fromkeys(item["action"] for item in opportunities))
         assessment = {
             "schema_version": 1,
-            "control_contract": "graph-adapt-v7",
+            "control_contract": "graph-adapt-v11",
             "instruction": instruction,
             "available_actions": available,
             "valid_targets": {key: targets[key] for key in available},
-            "selected_action": selected_action,
-            "selected_target": selected_target,
-            "reason": reason,
+            "action_opportunities": opportunities,
             "signals": signals,
             "answer_context": self._graph.answer_context(),
         }
-        if target_context is not None:
-            assessment["target_context"] = target_context
         return assessment
 
     def _execution_alignment(
@@ -517,21 +585,35 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
     rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if "research_graph_delta" not in payload:
         targets = payload.get("valid_targets", {})
-        context = payload.get("target_context", {})
-        context_lists = [
-            context.get("reusable_artifact_ids", []),
-            context.get("evidence", []),
-            context.get("unfetched_documents", []),
-            context.get("query_history", []),
+        opportunities = payload.get("action_opportunities", [])
+        contexts = [
+            item.get("target_context", {})
+            for item in opportunities
+            if isinstance(item, dict)
         ]
-        lists = context_lists + list(targets.values())
+        context_lists = [
+            values
+            for context in contexts
+            for values in (
+                context.get("evidence", []),
+                context.get("unfetched_documents", []),
+                context.get("fetched_documents", []),
+                context.get("retrieval_memory", {}).get("recent_attempts", []),
+            )
+        ]
+        answer_context = payload.get("answer_context", {})
+        lists = context_lists + list(targets.values()) + [
+            answer_context.get("candidates", []),
+            answer_context.get("unresolved_constraints", []),
+        ]
         while len(rendered) > maximum and any(lists):
             next(items for items in lists if items).pop()
             rendered = prefix + json.dumps(
                 payload, ensure_ascii=False, separators=(",", ":")
             )
-        if len(rendered) > maximum and context:
-            payload.pop("target_context", None)
+        if len(rendered) > maximum and contexts:
+            for item in opportunities:
+                item.pop("target_context", None)
             rendered = prefix + json.dumps(
                 payload, ensure_ascii=False, separators=(",", ":")
             )
@@ -540,7 +622,20 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
         return rendered
     delta = payload["research_graph_delta"]
     contract = payload.get("next_action_contract", {})
-    context = contract.get("target_context", {})
+    # Keep semantic claims visible longer than raw execution lineage when the
+    # observation must be compacted to the configured bound.
+    nodes = delta.get("new_nodes", [])
+    priority = ("EVIDENCE", "CANDIDATE", "DOCUMENT", "QUERY", "TASK", "CONSTRAINT", "ACTION")
+    delta["new_nodes"] = [
+        *[item for kind in priority for item in nodes if item.get("kind") == kind],
+        *[item for item in nodes if item.get("kind") not in priority],
+    ]
+    opportunities = contract.get("action_opportunities", [])
+    contexts = [
+        item.get("target_context", {})
+        for item in opportunities
+        if isinstance(item, dict)
+    ]
     lists = [
         delta["frontier"]["unfetched_documents"],
         delta["frontier"]["reusable_artifacts"],
@@ -548,17 +643,30 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
         delta["frontier"]["unresolved_constraints"],
         delta["new_edges"],
         delta["new_nodes"],
-        context.get("reusable_artifact_ids", []),
-        context.get("evidence", []),
-        context.get("unfetched_documents", []),
-        context.get("query_history", []),
+        *(
+            values
+            for context in contexts
+            for values in (
+                context.get("evidence", []),
+                context.get("unfetched_documents", []),
+                context.get("fetched_documents", []),
+                context.get("retrieval_memory", {}).get("recent_attempts", []),
+            )
+        ),
         *contract.get("valid_targets", {}).values(),
+        contract.get("answer_context", {}).get("candidates", []),
+        contract.get("answer_context", {}).get("unresolved_constraints", []),
     ]
     while len(rendered) > maximum and any(lists):
         next(items for items in lists if items).pop()
         rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    if len(rendered) > maximum and context:
-        contract.pop("target_context", None)
+    if len(rendered) > maximum and contexts:
+        for item in opportunities:
+            item.pop("target_context", None)
+        rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) > maximum:
+        for item in opportunities:
+            item.pop("reason", None)
         rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(rendered) > maximum:
         raise ValueError("graph delta exceeds configured bound")
@@ -567,3 +675,88 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
 
 def _normalize_query(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def _model_visible_action(action: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if action is None:
+        return None
+    return {
+        key: value
+        for key, value in action.items()
+        if key not in {"retrieval_memory_exposure", "retrieval_memory_consumption"}
+    }
+
+
+def _empty_memory_exposure() -> dict[str, Any]:
+    return {
+        "visible": False,
+        "target": None,
+        "target_matched": False,
+        "attempt_count": 0,
+        "queries": set(),
+        "unfetched_docids": set(),
+        "artifact_ids": set(),
+    }
+
+
+def _memory_exposure(
+    contract: Mapping[str, Any] | None,
+    *,
+    requested_target: str,
+) -> dict[str, Any]:
+    exposure = _empty_memory_exposure()
+    if not isinstance(contract, Mapping):
+        return exposure
+    opportunities = contract.get("action_opportunities", ())
+    opportunity = next(
+        (
+            item
+            for item in opportunities
+            if isinstance(item, Mapping) and item.get("action") == "CONTINUE"
+        ),
+        None,
+    )
+    if not isinstance(opportunity, Mapping):
+        return exposure
+    target = str(opportunity.get("target", ""))
+    context = opportunity.get("target_context")
+    if not isinstance(context, Mapping):
+        return exposure
+    memory = context.get("retrieval_memory")
+    if not isinstance(memory, Mapping):
+        return exposure
+    attempts = memory.get("recent_attempts", ())
+    queries = {
+        _normalize_query(item.get("query"))
+        for item in attempts
+        if isinstance(item, Mapping) and item.get("query")
+    }
+    artifact_ids = {
+        str(item.get("artifact_id"))
+        for item in attempts
+        if isinstance(item, Mapping) and item.get("artifact_id")
+    }
+    unfetched_docids = {
+        str((item.get("data") or {}).get("docid", ""))
+        for item in context.get("unfetched_documents", ())
+        if isinstance(item, Mapping) and (item.get("data") or {}).get("docid")
+    }
+    exposure.update(
+        {
+            "visible": bool(attempts or unfetched_docids),
+            "target": target or None,
+            "target_matched": bool(target and target == requested_target),
+            "attempt_count": int(memory.get("attempt_count", 0)),
+            "queries": queries,
+            "unfetched_docids": unfetched_docids,
+            "artifact_ids": artifact_ids,
+        }
+    )
+    return exposure
+
+
+def _call_docids(call: Mapping[str, Any]) -> set[str]:
+    values = {str(value) for value in (call.get("docids") or ())}
+    if call.get("docid") is not None:
+        values.add(str(call["docid"]))
+    return values

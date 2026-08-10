@@ -357,7 +357,7 @@ def test_timeout_kills_session_and_next_block_starts_clean() -> None:
     assert restarted.stdout.strip() == "False"
 
 
-def test_online_graph_adaptation_selects_and_executes_inspect_without_extra_turn() -> None:
+def test_online_graph_adaptation_exposes_and_executes_model_selected_inspect() -> None:
     tools = FakeLocalTools()
     model = ScriptedModel(
         [
@@ -378,10 +378,10 @@ def test_online_graph_adaptation_selects_and_executes_inspect_without_extra_turn
             ),
             tool_turn(
                 "call-3",
-                "print(search(query='beta'))",
-                action="CONTINUE",
+                "print(graph_trace(node_id='constraint:identity'))",
+                action="INSPECT",
                 target="constraint:identity",
-                expected_change="continue searching",
+                expected_change="inspect the existing research branch",
             ),
             answer_turn(),
         ]

@@ -900,22 +900,25 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         + "\n\n<graph_runtime_definitions>\n"
         + graph_contract
         + "\n</graph_runtime_definitions>\n\n"
-        + "GRAPH_ASSESSMENT and each GRAPH_DELTA select the action and graph target for the next "
-        + "programmatic_tool_call. The following program must implement that selected action; "
-        + "repeat it in the action and target metadata. Declare "
-        + "the currently targeted semantic constraint with the flat "
-        + "constraint_id and constraint fields. Include additional newly identified constraints, "
+        + "GRAPH_ASSESSMENT and each GRAPH_DELTA expose graph-grounded action opportunities for "
+        + "the next step. Choose an action and target whose stated reason fits your semantic "
+        + "judgment; the runtime will not choose or rewrite your program. The action and target "
+        + "metadata must describe the program you actually execute. When useful, declare the "
+        + "currently targeted semantic constraint with the flat constraint_id and constraint "
+        + "fields. Include additional newly identified constraints, "
         + "candidates, or evidence in "
         + "research_updates; empty arrays mean no semantic update. The target must be task or a "
         + "node already present or declared in the same research_updates object. "
         + "Research graph relations are agent-authored; the runtime verifies identifiers and "
         + "that evidence quotes occur in fetched documents. GRAPH_DELTA is appended to the tool "
-        + "observation and supplies the bounded valid actions and targets for the next explicit "
-        + "program. For CONTINUE, prefer its target_context before unrelated broad retrieval: "
+        + "observation and supplies bounded valid actions, targets, and dependency context. "
+        + "ANSWER means return the final answer without another tool call. For CONTINUE, prefer "
+        + "its target_context before unrelated broad retrieval: "
         + "fetch a relevant listed unfetched document or refine from the listed query history. "
         + "When fetched content supports a plausible answer, declare the candidate and "
         + "attach an exact supporting or refuting quote in the same program before printing the "
-        + "compact observation.",
+        + "compact observation. For CONTINUE, use retrieval_memory to avoid repeating stalled "
+        + "queries and to preserve productive query directions for the current target.",
         user_prompt,
     )
 
@@ -1016,8 +1019,6 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
             "action",
             "target",
             "expected_change",
-            "constraint_id",
-            "constraint",
         ]
         return spec
     if config.runtime.graph_progress_mode in {"off", "placebo_auto", "graph_auto"}:
@@ -1377,6 +1378,10 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         "program_overrides": sum(
             int(value.get("program_overrides", 0)) for value in values
         ),
+        "unavailable_action_requests": sum(
+            int(value.get("unavailable_action_requests", 0)) for value in values
+        ),
+        "retrieval_memory_consumption": _sum_graph_memory_metrics(values),
         "node_count": sum(
             int((value.get("research_graph") or {}).get("node_count", 0))
             for value in values
@@ -1398,6 +1403,28 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
             for value in values
         ),
         "interface_calls": dict(interfaces),
+    }
+
+
+def _sum_graph_memory_metrics(values: list[dict[str, Any]]) -> dict[str, int]:
+    keys = (
+        "visible_blocks",
+        "target_matched_blocks",
+        "target_mismatch_blocks",
+        "searches_after_exposure",
+        "differentiated_queries",
+        "exposed_query_repeats",
+        "known_document_fetches",
+        "exposed_artifact_reuses",
+        "aligned_blocks",
+        "repeat_only_blocks",
+    )
+    return {
+        key: sum(
+            int((value.get("retrieval_memory_consumption") or {}).get(key, 0))
+            for value in values
+        )
+        for key in keys
     }
 
 
