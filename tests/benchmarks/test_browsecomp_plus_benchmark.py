@@ -225,6 +225,36 @@ def test_online_graph_adaptation_has_typed_research_contract(tmp_path: Path) -> 
         config, RETRIEVER_METADATA
     )
 
+def test_graph_v2_prompt_has_explicit_adaptation_cycle_and_balanced_demos(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    adapted = replace(
+        config,
+        runtime=replace(config.runtime, graph_adaptation_mode="online"),
+        browsecomp_plus=replace(
+            config.browsecomp_plus,
+            prompt_variant="fewshot-ptc-graph-v2",
+        ),
+    )
+
+    system_prompt, _ = benchmark._prompt_pair(adapted)
+    assert "<graph_adaptation_protocol>" in system_prompt
+    assert "INITIALIZE -> ASSESS -> DECIDE -> EXECUTE -> VERIFY" in system_prompt
+    assert "actual graph delta does not match" in system_prompt
+    assert "<answer_readiness>" in system_prompt
+
+    demos = benchmark._demonstration_messages(adapted)
+    calls = [
+        json.loads(call["function"]["arguments"])
+        for message in demos
+        for call in message.get("tool_calls", ())
+    ]
+    assert calls[0]["target"] == "task"
+    assert "task_graph" in calls[0]
+    assert {call["action"] for call in calls} >= {"CONTINUE", "INSPECT", "PATCH"}
+    assert any("actual_delta" in str(message.get("content", "")) for message in demos)
+
 
 def test_online_graph_adaptation_rejects_parallel_progress_channel(tmp_path: Path) -> None:
     config = _config(tmp_path)

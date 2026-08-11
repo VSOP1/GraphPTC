@@ -232,6 +232,53 @@ BROWSECOMP_PLUS_PHASE_PLANNING_SYSTEM_PROMPT = (
 )
 
 
+GRAPH_ADAPTATION_V2_GUIDANCE = """<graph_adaptation_protocol>
+Use the Research Graph to choose and verify the next research step, not merely to record work.
+
+Lifecycle: INITIALIZE -> ASSESS -> DECIDE -> EXECUTE -> VERIFY -> ANSWER or REPLAN.
+
+1. INITIALIZE: On the first PTC block, provide task_graph exactly once. Decompose the question into
+stable, independently verifiable requirements and explicit depends_on relations. Use target="task"
+for this block.
+2. ASSESS: Read GRAPH_ASSESSMENT or the latest GRAPH_DELTA. Identify the unresolved requirement,
+conflict, failed execution, or reusable artifact that most directly blocks the answer.
+3. DECIDE: Choose one action and target before writing code. The metadata must describe the program
+you actually execute and expected_change must name an observable graph-state change.
+4. EXECUTE: Use one coherent Python program for all mechanically foreseeable search, fetch,
+filtering, comparison, aggregation, graph updates, and compact stdout. Preserve useful variables
+across PTC blocks.
+5. VERIFY: If the actual graph delta does not match expected_change, diagnose the miss and change
+the query, target, or action; do not repeat
+the same unsuccessful step.
+</graph_adaptation_protocol>
+
+<action_policy>
+- CONTINUE: acquire or process evidence for one unresolved requirement. Prefer a concrete unfetched
+  document or productive query lineage in target_context over unrelated broad retrieval.
+- INSPECT: resolve conflicting evidence, ambiguous candidate identity, or an unclear provenance
+  path with graph_trace or graph_alternatives before more retrieval.
+- PATCH: correct an execution failure and re-execute the repaired operation. Changing only metadata
+  is not a patch.
+- REUSE_REPLAY: load a relevant graph artifact instead of repeating its external search or fetch.
+- ANSWER: make no further tool call; return the final answer only when answer_readiness is satisfied.
+</action_policy>
+
+<graph_update_rules>
+Declare newly identified constraints and candidates in research_updates. Evidence must use an exact
+quote from a fetched document and may be committed inside the program with graph_add_evidence. The
+runtime validates identifiers and source quotes; it does not supply semantic judgment. A target must
+be task or a node already present or declared in the same call. When GRAPH_DELTA supplies
+suggested_operations, execute a relevant concrete operation before unrelated broad retrieval.
+</graph_update_rules>
+
+<answer_readiness>
+Answer only when every necessary requirement and dependency is covered by fetched evidence, the
+selected candidate is supported, and no material conflict remains. Otherwise target the specific
+missing requirement or conflict. Return the concise final answer inside <result> and </result> tags;
+separate multiple answers with commas.
+</answer_readiness>"""
+
+
 BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE = """Answer the following question using the
 research environment when evidence is needed.
 
@@ -267,6 +314,10 @@ _PROMPT_VARIANTS = {
         BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
     ),
     "fewshot-ptc-v1": (
+        BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
+        BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
+    ),
+    "fewshot-ptc-graph-v2": (
         BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
         BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
     ),
@@ -895,34 +946,40 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         ensure_ascii=False,
         indent=2,
     )
+    if variant == "fewshot-ptc-graph-v2":
+        graph_guidance = GRAPH_ADAPTATION_V2_GUIDANCE
+    else:
+        graph_guidance = (
+            "GRAPH_ASSESSMENT and each GRAPH_DELTA expose graph-grounded action opportunities for "
+            + "the next step. Choose an action and target whose stated reason fits your semantic "
+            + "judgment; the runtime will not choose or rewrite your program. The action and target "
+            + "metadata must describe the program you actually execute. When useful, declare the "
+            + "currently targeted semantic constraint with the flat constraint_id and constraint "
+            + "fields. On the first PTC block, initialize task_graph once with stable, independently "
+            + "verifiable requirements and their depends_on relations; do not repeat or redefine that "
+            + "initial decomposition on later blocks. Include additional newly identified constraints, "
+            + "candidates, or evidence in "
+            + "research_updates; empty arrays mean no semantic update. The target must be task or a "
+            + "node already present or declared in the same research_updates object. "
+            + "Research graph relations are agent-authored; the runtime verifies identifiers and "
+            + "that evidence quotes occur in fetched documents. GRAPH_DELTA is appended to the tool "
+            + "observation and supplies bounded valid actions, targets, and dependency context. "
+            + "ANSWER means return the final answer without another tool call. For CONTINUE, prefer "
+            + "its target_context before unrelated broad retrieval: "
+            + "fetch a relevant listed unfetched document or refine from the listed query history. "
+            + "When fetched content supports a plausible answer, declare the candidate and "
+            + "attach an exact supporting or refuting quote in the same program before printing the "
+            + "compact observation. For CONTINUE, use retrieval_memory to avoid repeating stalled "
+            + "queries and to preserve productive query directions for the current target. When the "
+            + "selected opportunity contains suggested_operations, execute that concrete graph-backed "
+            + "operation before starting unrelated broad retrieval."
+        )
     return (
         system_prompt
         + "\n\n<graph_runtime_definitions>\n"
         + graph_contract
         + "\n</graph_runtime_definitions>\n\n"
-        + "GRAPH_ASSESSMENT and each GRAPH_DELTA expose graph-grounded action opportunities for "
-        + "the next step. Choose an action and target whose stated reason fits your semantic "
-        + "judgment; the runtime will not choose or rewrite your program. The action and target "
-        + "metadata must describe the program you actually execute. When useful, declare the "
-        + "currently targeted semantic constraint with the flat constraint_id and constraint "
-        + "fields. On the first PTC block, initialize task_graph once with stable, independently "
-        + "verifiable requirements and their depends_on relations; do not repeat or redefine that "
-        + "initial decomposition on later blocks. Include additional newly identified constraints, "
-        + "candidates, or evidence in "
-        + "research_updates; empty arrays mean no semantic update. The target must be task or a "
-        + "node already present or declared in the same research_updates object. "
-        + "Research graph relations are agent-authored; the runtime verifies identifiers and "
-        + "that evidence quotes occur in fetched documents. GRAPH_DELTA is appended to the tool "
-        + "observation and supplies bounded valid actions, targets, and dependency context. "
-        + "ANSWER means return the final answer without another tool call. For CONTINUE, prefer "
-        + "its target_context before unrelated broad retrieval: "
-        + "fetch a relevant listed unfetched document or refine from the listed query history. "
-        + "When fetched content supports a plausible answer, declare the candidate and "
-        + "attach an exact supporting or refuting quote in the same program before printing the "
-        + "compact observation. For CONTINUE, use retrieval_memory to avoid repeating stalled "
-        + "queries and to preserve productive query directions for the current target. When the "
-        + "selected opportunity contains suggested_operations, execute that concrete graph-backed "
-        + "operation before starting unrelated broad retrieval.",
+        + graph_guidance,
         user_prompt,
     )
 
@@ -1113,6 +1170,10 @@ def _demonstration_messages(
     config: ExperimentConfig,
 ) -> tuple[dict[str, Any], ...]:
     variant = config.browsecomp_plus.prompt_variant
+    if variant == "fewshot-ptc-graph-v2":
+        if config.runtime.graph_adaptation_mode != "online":
+            return PTC_FEW_SHOT_MESSAGES
+        return _graph_v2_demonstration_messages()
     if variant == "fewshot-ptc-v1":
         if config.runtime.graph_adaptation_mode != "online":
             return PTC_FEW_SHOT_MESSAGES
@@ -1177,6 +1238,224 @@ def _demonstration_messages(
                 function["arguments"] = json.dumps(arguments)
         return _adaptation_followup_demos(messages)
     return ()
+
+
+def _graph_v2_demonstration_messages() -> tuple[dict[str, Any], ...]:
+    normal = copy.deepcopy(list(PTC_FEW_SHOT_MESSAGES[:4]))
+    normal_call = normal[1]["tool_calls"][0]["function"]
+    normal_arguments = json.loads(normal_call["arguments"])
+    normal_arguments.update(
+        {
+            "action": "CONTINUE",
+            "target": "task",
+            "expected_change": "cover both depot eligibility requirements",
+            "constraint_id": "inspection",
+            "constraint": "candidate passed inspection",
+            "research_updates": {
+                "constraints": [],
+                "candidates": [],
+                "evidence": [],
+            },
+            "task_graph": {
+                "requirements": [
+                    {
+                        "id": "inspection",
+                        "description": "candidate passed inspection",
+                        "depends_on": [],
+                    },
+                    {
+                        "id": "coolant",
+                        "description": "candidate stored coolant K7",
+                        "depends_on": [],
+                    },
+                ]
+            },
+        }
+    )
+    normal_arguments["code"] = _adaptation_demo_code(
+        normal_arguments["code"], "demo_batch_filter"
+    )
+    normal_call["arguments"] = json.dumps(normal_arguments)
+    normal[2]["content"] = str(normal[2]["content"]) + (
+        "\n\nGRAPH_DELTA "
+        '{"actual_delta":{"realized":true,"covered_requirements":'
+        '["requirement:inspection","requirement:coolant"]},'
+        '"frontier":{"unresolved_constraints":[],"conflicted_candidates":[]}}'
+    )
+
+    conflict = [
+        {
+            "role": "user",
+            "content": (
+                "Answer the following question using the research environment when evidence is "
+                "needed.\n\n<question>Which nominee, Amber or Boreal, received the verified "
+                "Northstar award?</question>\n\nReturn the final concise answer inside <result> "
+                "and </result> tags."
+            ),
+        },
+        _graph_v2_call(
+            call_id="demo_conflict_search",
+            action="CONTINUE",
+            target="task",
+            expected_change="identify the nominee and verify the award relation",
+            constraint_id="award",
+            constraint="candidate received the verified Northstar award",
+            code=(
+                "pages = []\n"
+                "for hit in search(query='Amber Boreal Northstar verified award'):\n"
+                "    pages.append(fetch(docid=hit['docid']))\n"
+                "print([{'docid': page['docid'], 'text': page['content'][-180:]} "
+                "for page in pages])"
+            ),
+            task_graph={
+                "requirements": [
+                    {
+                        "id": "identity",
+                        "description": "nominee identity is unambiguous",
+                        "depends_on": [],
+                    },
+                    {
+                        "id": "award",
+                        "description": "candidate received the verified Northstar award",
+                        "depends_on": ["identity"],
+                    },
+                ]
+            },
+        ),
+        {
+            "role": "tool",
+            "tool_call_id": "demo_conflict_search",
+            "content": (
+                "Fetched reports support Boreal and contain conflicting references to Amber.\n\n"
+                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},\"frontier\":"
+                "{\"conflicted_candidates\":[\"candidate:amber\"],"
+                "\"unresolved_constraints\":[\"requirement:award\"]}}"
+            ),
+        },
+        _graph_v2_call(
+            call_id="demo_conflict_inspect",
+            action="INSPECT",
+            target="candidate:amber",
+            expected_change="resolve the candidate conflict from verified support and refutation",
+            constraint_id="award",
+            constraint="candidate received the verified Northstar award",
+            code="print(graph_alternatives(target_id='candidate:amber'))",
+        ),
+        {
+            "role": "tool",
+            "tool_call_id": "demo_conflict_inspect",
+            "content": (
+                "{'candidates':[{'label':'Amber','supports':1,'refutes':1},"
+                "{'label':'Boreal','supports':2,'refutes':0}]}\n\n"
+                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},"
+                "\"frontier\":{\"conflicted_candidates\":[],"
+                "\"unresolved_constraints\":[]}}"
+            ),
+        },
+        {"role": "assistant", "content": "<result>Boreal</result>"},
+    ]
+
+    repair = [
+        {
+            "role": "user",
+            "content": (
+                "Answer the following question using the research environment when evidence is "
+                "needed.\n\n<question>What verified output is listed for Cedar station?</question>"
+                "\n\nReturn the final concise answer inside <result> and </result> tags."
+            ),
+        },
+        _graph_v2_call(
+            call_id="demo_failed_fetch",
+            action="CONTINUE",
+            target="task",
+            expected_change="fetch the Cedar station record",
+            constraint_id="cedar-output",
+            constraint="verified Cedar station output",
+            code=(
+                "cedar_hits = search(query='Cedar station verified output')\n"
+                "print(fetch(docid=cedar_hits[0]['id']))"
+            ),
+            task_graph={
+                "requirements": [
+                    {
+                        "id": "cedar-output",
+                        "description": "verified Cedar station output",
+                        "depends_on": [],
+                    }
+                ]
+            },
+        ),
+        {
+            "role": "tool",
+            "tool_call_id": "demo_failed_fetch",
+            "content": (
+                "PTC_ERROR {\"stage\":\"execution\",\"error_type\":\"KeyError\","
+                "\"message\":\"id\"}\n\nGRAPH_DELTA {\"actual_delta\":"
+                "{\"realized\":false},\"diagnosis\":\"execution failure\","
+                "\"valid_actions\":[\"PATCH\"]}"
+            ),
+        },
+        _graph_v2_call(
+            call_id="demo_repaired_fetch",
+            action="PATCH",
+            target="task",
+            expected_change="re-execute the fetch with the valid docid field",
+            constraint_id="cedar-output",
+            constraint="verified Cedar station output",
+            code="cedar_page = fetch(docid=cedar_hits[0]['docid'])\nprint(cedar_page)",
+        ),
+        {
+            "role": "tool",
+            "tool_call_id": "demo_repaired_fetch",
+            "content": (
+                "{'docid':'cedar-record','content':'Cedar station verified output: 31'}\n\n"
+                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},"
+                "\"frontier\":{\"unresolved_constraints\":[]}}"
+            ),
+        },
+        {"role": "assistant", "content": "<result>31</result>"},
+    ]
+    return tuple(normal + conflict + repair)
+
+
+def _graph_v2_call(
+    *,
+    call_id: str,
+    action: str,
+    target: str,
+    expected_change: str,
+    constraint_id: str,
+    constraint: str,
+    code: str,
+    task_graph: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    arguments: dict[str, Any] = {
+        "code": code,
+        "action": action,
+        "target": target,
+        "expected_change": expected_change,
+        "constraint_id": constraint_id,
+        "constraint": constraint,
+        "research_updates": {"constraints": [], "candidates": [], "evidence": []},
+    }
+    if task_graph is not None:
+        arguments["task_graph"] = task_graph
+    return {
+        "role": "assistant",
+        "content": (
+            f"I will {action.lower()} on {target} and verify the declared graph change."
+        ),
+        "tool_calls": [
+            {
+                "id": call_id,
+                "type": "function",
+                "function": {
+                    "name": "programmatic_tool_call",
+                    "arguments": json.dumps(arguments),
+                },
+            }
+        ],
+    }
 
 
 def _adaptation_demo_code(code: str, call_id: str) -> str:

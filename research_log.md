@@ -61,3 +61,12 @@
 - pilot100 结果：100/100生成和评分有效，35/100（35%）；candidate retrieval recall 41.93%，fetched-evidence recall 29.47%。65错中34个 retrieval miss、16个 candidate命中但未fetch、15个证据已fetch后的语义/答案错误。
 - 机制结果：88/100初始化 task graph；171个 verified evidence；694次精确 fetch artifact reuse，重复 fetch 为0；但2450次 `CONTINUE` 对比3次 `INSPECT`、4次 `PATCH`，且 actual delta 1112次实现、1355次未实现。
 - 结论：完成最终评测并保留 v12.1 代码。它证明了任务图、具体缺口暴露和依赖感知复用可以进入在线执行，但35%未超过历史 v11 final100 的39%，不能宣称端到端能力提升。下一轮若继续，应围绕 query/requirement覆盖和 evidence 后推理，而不是继续强化 fetch 或增加任务规则。
+
+## v13 prompt-v2（开发中）
+
+- 实验假设：将 Graph Adapt 的追加式说明改为明确的 `INITIALIZE → ASSESS → DECIDE → EXECUTE → VERIFY` 协议，并补充正常、冲突检查和真实 `failure → PATCH → re-execution` few-shot，可使模型依据图状态切换动作，而不是惯性 `CONTINUE`。
+- 修改边界：新增独立 `fewshot-ptc-graph-v2`；只改变 system/user prompt 与 synthetic few-shot，不改变 tool schema、runtime、retriever、模型、预算或固定20题。旧 `fewshot-ptc-v1` 与既有产物保持不变。
+- 本轮结果：20/20执行成功，开发 grader 为7/20（35%）；candidate retrieval recall 41.74%，fetched-evidence recall 37.49%。13个错误分为8个 retrieval miss、2个候选命中但未 fetch、3个已 fetch evidence 后答案错误。
+- 机制结果：442个 PTC blocks 中399次 `CONTINUE`、41次有效 `PATCH`、20次 `ANSWER`，没有 `INSPECT` 或显式 `REUSE_REPLAY`。47个失败 block 中41个下一步请求 `PATCH`，对应41个 repair block 成功；说明示例使 PATCH 从标签变成了实际错误后重执行。actual delta 361次实现、81次未实现，精确 fetch artifact reuse 464次，重复 fetch 为0。
+- 失败现象：仅10/20显式初始化 task graph；verified evidence 28个；8/13错误仍是 retrieval miss。结构化 prompt 改善了执行错误后的动作响应，但没有稳定建立 requirement graph，也没有让依赖图改变查询覆盖或 evidence 后推理。
+- 是否保留：保留为开发 challenger，不替换当前 v12.1。下一轮 prompt 应优先强化首 block decomposition 和 `missed delta → requirement/query branch change`，不再增加 PATCH 示例或 BrowseComp 专用规则。
