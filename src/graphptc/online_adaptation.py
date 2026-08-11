@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import copy
 from collections import Counter
 from typing import Any, Mapping
 
@@ -57,6 +58,8 @@ class OnlineGraphAdaptation:
         self._next_action_contract: dict[str, Any] | None = None
         self._current_memory_exposure: dict[str, Any] | None = None
         self._loaded_artifacts_since_observation: list[str] = []
+        self._realized_graph_deltas = 0
+        self._missed_graph_deltas = 0
         self._memory_metrics: Counter[str] = Counter(
             {key: 0 for key in _MEMORY_METRIC_KEYS}
         )
@@ -121,8 +124,17 @@ class OnlineGraphAdaptation:
         expected_change = str(payload.get("expected_change", "")).strip()[:500]
         accepted_updates = 0
         update_errors: list[str] = []
+        task_graph_initialized = False
+        task_graph = payload.get("task_graph")
         flat_constraint_id = str(payload.get("constraint_id", "")).strip()
         flat_constraint = str(payload.get("constraint", "")).strip()
+        updates = payload.get("research_updates")
+        if isinstance(task_graph, Mapping) and task_graph.get("requirements"):
+            try:
+                self._graph.initialize_task_graph(list(task_graph["requirements"]))
+                task_graph_initialized = True
+            except (TypeError, ValueError) as exc:
+                update_errors.append(str(exc))
         if flat_constraint_id and flat_constraint:
             try:
                 self.graph_add_constraint(
@@ -132,7 +144,6 @@ class OnlineGraphAdaptation:
                 accepted_updates += 1
             except ValueError as exc:
                 update_errors.append(str(exc))
-        updates = payload.get("research_updates")
         if isinstance(updates, Mapping):
             for item in updates.get("constraints", ()):
                 try:
@@ -187,6 +198,7 @@ class OnlineGraphAdaptation:
             "target_valid": target_valid,
             "source": source,
             "accepted_research_updates": accepted_updates,
+            "task_graph_initialized": task_graph_initialized,
             "rejected_research_updates": len(update_errors),
             "research_update_errors": update_errors[:3],
         }
@@ -196,6 +208,16 @@ class OnlineGraphAdaptation:
         self._current_action = record
         self._interface_counts_before_block = self._graph.interface_counts()
         self._graph.set_action_target(target if target_valid else None)
+        if target_valid:
+            record["before_graph_state"] = self._graph.action_snapshot(target)
+        opportunity = _matching_opportunity(
+            self._next_action_contract,
+            action=action,
+            target=target,
+        )
+        if opportunity is not None:
+            record["diagnosis"] = opportunity.get("diagnosis")
+            record["expected_graph_delta"] = opportunity.get("expected_graph_delta")
         record["action_node_id"] = self._graph.record_action(
             action=record["action"],
             target=target,
@@ -214,12 +236,15 @@ class OnlineGraphAdaptation:
 
     def initial_observation(self) -> str:
         assessment = self._assessment(execution=None)
-        self._next_action_contract = assessment
-        return _bounded_payload(
+        message = _bounded_payload(
             "GRAPH_ASSESSMENT ",
             assessment,
             self._max_observation_chars,
         )
+        self._next_action_contract = json.loads(
+            message.removeprefix("GRAPH_ASSESSMENT ")
+        )
+        return message
 
     def prepare_program_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         requested_action = str(payload.get("action", "")).strip().upper()
@@ -267,6 +292,12 @@ class OnlineGraphAdaptation:
         if self._current_action is not None:
             memory_consumption = self._record_memory_consumption(recent_calls)
             self._current_action["retrieval_memory_consumption"] = memory_consumption
+            graph_delta = self._verify_graph_delta()
+            self._current_action["graph_delta_verification"] = graph_delta
+            if graph_delta["realized"]:
+                self._realized_graph_deltas += 1
+            else:
+                self._missed_graph_deltas += 1
             aligned, reason = self._execution_alignment(
                 self._current_action["action"], execution
             )
@@ -277,19 +308,26 @@ class OnlineGraphAdaptation:
             else:
                 self._misaligned_actions += 1
         next_action_contract = self._assessment(execution=execution)
-        self._next_action_contract = next_action_contract
         payload = {
             "schema_version": 1,
-            "control_contract": "graph-adapt-v11",
+            "control_contract": "graph-adapt-v12",
             "block": self._observation_calls,
             "declared_action": _model_visible_action(self._current_action),
+            "actual_graph_delta": _compact_graph_delta_verification(
+                None
+                if self._current_action is None
+                else self._current_action.get("graph_delta_verification")
+            ),
             "execution": execution,
             "research_graph_delta": self._graph.delta(),
             "next_action_contract": next_action_contract,
         }
-        return _bounded_payload(
+        message = _bounded_payload(
             "GRAPH_DELTA ", payload, self._max_observation_chars
         )
+        visible_payload = json.loads(message.removeprefix("GRAPH_DELTA "))
+        self._next_action_contract = visible_payload["next_action_contract"]
+        return message
 
     def finish(self, *, answered: bool) -> None:
         if not answered:
@@ -319,7 +357,7 @@ class OnlineGraphAdaptation:
     def telemetry(self) -> dict[str, Any]:
         return {
             "mode": "online",
-            "control_contract": "graph-adapt-v11",
+            "control_contract": "graph-adapt-v12",
             "observation_calls": self._observation_calls,
             "action_distribution": dict(self._actions),
             "action_history": list(self._action_history),
@@ -331,6 +369,8 @@ class OnlineGraphAdaptation:
             "unavailable_action_requests": self._unavailable_action_requests,
             "policy_overrides": 0,
             "program_overrides": 0,
+            "realized_graph_deltas": self._realized_graph_deltas,
+            "missed_graph_deltas": self._missed_graph_deltas,
             "max_observation_chars": self._max_observation_chars,
             "retrieval_memory_consumption": dict(self._memory_metrics),
             "research_graph": self._graph.telemetry(),
@@ -409,19 +449,27 @@ class OnlineGraphAdaptation:
     def _assessment(self, *, execution: dict[str, Any] | None) -> dict[str, Any]:
         targets = self._graph.action_targets()
         opportunities: list[dict[str, Any]] = []
-        continue_target = targets["CONTINUE"][0]
-        opportunities.append(
-            {
+        continue_targets = targets["CONTINUE"]
+        for index, continue_target in enumerate(continue_targets):
+            full_context = self._graph.target_context(continue_target)
+            diagnosis = _diagnose_target(
+                full_context,
+                task_graph_initialized=self._graph.task_graph_initialized,
+            )
+            item = {
                 "action": "CONTINUE",
                 "target": continue_target,
-                "reason": (
-                    "use target retrieval memory to resolve an evidence gap"
-                    if continue_target != "task"
-                    else "extend the current research state"
+                **diagnosis,
+                "target_context": (
+                    full_context
+                    if index == 0
+                    else {
+                        "target": full_context["target"],
+                        "requirement_state": full_context.get("requirement_state"),
+                    }
                 ),
-                "target_context": self._graph.target_context(continue_target),
             }
-        )
+            opportunities.append(item)
         if targets["INSPECT"] != ["task"]:
             opportunities.append(
                 {
@@ -478,7 +526,7 @@ class OnlineGraphAdaptation:
         available = list(dict.fromkeys(item["action"] for item in opportunities))
         assessment = {
             "schema_version": 1,
-            "control_contract": "graph-adapt-v11",
+            "control_contract": "graph-adapt-v12",
             "instruction": instruction,
             "available_actions": available,
             "valid_targets": {key: targets[key] for key in available},
@@ -487,6 +535,51 @@ class OnlineGraphAdaptation:
             "answer_context": self._graph.answer_context(),
         }
         return assessment
+
+    def _verify_graph_delta(self) -> dict[str, Any]:
+        action = self._current_action or {}
+        target = action.get("target")
+        before = action.get("before_graph_state")
+        expected = action.get("expected_graph_delta")
+        if not target or not isinstance(before, Mapping):
+            return {"realized": False, "reason": "no valid target snapshot"}
+        after = self._graph.action_snapshot(str(target))
+        operation = str((expected or {}).get("operation", ""))
+        if action.get("task_graph_initialized"):
+            realized = True
+        elif operation == "SEARCH_TARGET":
+            realized = int(after.get("queries", 0)) > int(before.get("queries", 0))
+        elif operation == "FETCH_DOCUMENT":
+            realized = int(after.get("fetched_documents", 0)) > int(
+                before.get("fetched_documents", 0)
+            )
+        elif operation in {"ADD_EVIDENCE", "VERIFY_CANDIDATE", "RESOLVE_CONFLICT"}:
+            realized = (
+                int(after.get("evidence", 0)) > int(before.get("evidence", 0))
+                or after.get("status") != before.get("status")
+            )
+        elif operation == "REUSE_ARTIFACT":
+            realized = int(after.get("artifact_reuse_hits", 0)) > int(
+                before.get("artifact_reuse_hits", 0)
+            )
+        else:
+            realized = any(
+                after.get(key) != before.get(key)
+                for key in (
+                    "status",
+                    "queries",
+                    "retrieved_documents",
+                    "fetched_documents",
+                    "evidence",
+                    "artifact_reuse_hits",
+                )
+            )
+        return {
+            "realized": bool(realized),
+            "operation": operation or None,
+            "before": dict(before),
+            "after": after,
+        }
 
     def _execution_alignment(
         self, action: str, execution: Mapping[str, Any]
@@ -510,7 +603,14 @@ class OnlineGraphAdaptation:
             aligned = bool(execution["success"])
             return aligned, "patch block succeeded" if aligned else "patch block failed"
         if action == "CONTINUE":
-            return True, "research block executed"
+            verification = (self._current_action or {}).get("graph_delta_verification", {})
+            aligned = bool(verification.get("realized"))
+            return (
+                aligned,
+                "expected graph delta realized"
+                if aligned
+                else "expected graph delta was not realized",
+            )
         return False, "ANSWER must finalize without a PTC block"
 
 
@@ -582,6 +682,7 @@ def _call_summary(
 
 
 def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
+    payload = copy.deepcopy(payload)
     rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if "research_graph_delta" not in payload:
         targets = payload.get("valid_targets", {})
@@ -637,12 +738,6 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
         if isinstance(item, dict)
     ]
     lists = [
-        delta["frontier"]["unfetched_documents"],
-        delta["frontier"]["reusable_artifacts"],
-        delta["frontier"]["conflicted_candidates"],
-        delta["frontier"]["unresolved_constraints"],
-        delta["new_edges"],
-        delta["new_nodes"],
         *(
             values
             for context in contexts
@@ -656,6 +751,12 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
         *contract.get("valid_targets", {}).values(),
         contract.get("answer_context", {}).get("candidates", []),
         contract.get("answer_context", {}).get("unresolved_constraints", []),
+        delta["frontier"]["unfetched_documents"],
+        delta["frontier"]["reusable_artifacts"],
+        delta["frontier"]["conflicted_candidates"],
+        delta["frontier"]["unresolved_constraints"],
+        delta["new_edges"],
+        delta["new_nodes"],
     ]
     while len(rendered) > maximum and any(lists):
         next(items for items in lists if items).pop()
@@ -667,6 +768,33 @@ def _bounded_payload(prefix: str, payload: dict[str, Any], maximum: int) -> str:
     if len(rendered) > maximum:
         for item in opportunities:
             item.pop("reason", None)
+        rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) > maximum:
+        for item in opportunities:
+            item.pop("expected_graph_delta", None)
+        rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    while len(rendered) > maximum and len(opportunities) > 2:
+        opportunities.pop(-2)
+        rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) > maximum:
+        delta["new_nodes"] = []
+        delta["new_edges"] = []
+        for values in delta.get("frontier", {}).values():
+            if isinstance(values, list):
+                values.clear()
+        contract["answer_context"] = {}
+        contract["valid_targets"] = {
+            key: values[:1]
+            for key, values in contract.get("valid_targets", {}).items()
+        }
+        contract["action_opportunities"] = [
+            {
+                key: item[key]
+                for key in ("action", "target", "diagnosis")
+                if key in item
+            }
+            for item in opportunities[:2]
+        ]
         rendered = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(rendered) > maximum:
         raise ValueError("graph delta exceeds configured bound")
@@ -683,7 +811,26 @@ def _model_visible_action(action: Mapping[str, Any] | None) -> dict[str, Any] | 
     return {
         key: value
         for key, value in action.items()
-        if key not in {"retrieval_memory_exposure", "retrieval_memory_consumption"}
+        if key
+        not in {
+            "retrieval_memory_exposure",
+            "retrieval_memory_consumption",
+            "before_graph_state",
+            "graph_delta_verification",
+        }
+    }
+
+
+def _compact_graph_delta_verification(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, Mapping):
+        return None
+    before = value.get("before") if isinstance(value.get("before"), Mapping) else {}
+    after = value.get("after") if isinstance(value.get("after"), Mapping) else {}
+    return {
+        "realized": bool(value.get("realized")),
+        "operation": value.get("operation"),
+        "status_before": before.get("status"),
+        "status_after": after.get("status"),
     }
 
 
@@ -712,7 +859,9 @@ def _memory_exposure(
         (
             item
             for item in opportunities
-            if isinstance(item, Mapping) and item.get("action") == "CONTINUE"
+            if isinstance(item, Mapping)
+            and item.get("action") == "CONTINUE"
+            and str(item.get("target", "")) == requested_target
         ),
         None,
     )
@@ -721,10 +870,10 @@ def _memory_exposure(
     target = str(opportunity.get("target", ""))
     context = opportunity.get("target_context")
     if not isinstance(context, Mapping):
-        return exposure
+        context = {}
     memory = context.get("retrieval_memory")
     if not isinstance(memory, Mapping):
-        return exposure
+        memory = {}
     attempts = memory.get("recent_attempts", ())
     queries = {
         _normalize_query(item.get("query"))
@@ -741,6 +890,13 @@ def _memory_exposure(
         for item in context.get("unfetched_documents", ())
         if isinstance(item, Mapping) and (item.get("data") or {}).get("docid")
     }
+    unfetched_docids.update(
+        str(item.get("docid"))
+        for item in opportunity.get("suggested_operations", ())
+        if isinstance(item, Mapping)
+        and item.get("operation") == "fetch"
+        and item.get("docid")
+    )
     exposure.update(
         {
             "visible": bool(attempts or unfetched_docids),
@@ -753,6 +909,113 @@ def _memory_exposure(
         }
     )
     return exposure
+
+
+def _matching_opportunity(
+    contract: Mapping[str, Any] | None,
+    *,
+    action: str,
+    target: str,
+) -> Mapping[str, Any] | None:
+    if not isinstance(contract, Mapping):
+        return None
+    return next(
+        (
+            item
+            for item in contract.get("action_opportunities", ())
+            if isinstance(item, Mapping)
+            and item.get("action") == action
+            and str(item.get("target", "")) == target
+        ),
+        None,
+    )
+
+
+def _diagnose_target(
+    context: Mapping[str, Any],
+    *,
+    task_graph_initialized: bool,
+) -> dict[str, Any]:
+    state = context.get("requirement_state")
+    if not isinstance(state, Mapping):
+        if not task_graph_initialized:
+            return {
+                "diagnosis": "TASK_DECOMPOSITION_REQUIRED",
+                "reason": "decompose the task into stable, independently verifiable requirements",
+                "expected_graph_delta": {
+                    "operation": "INITIALIZE_TASK_GRAPH",
+                    "from": "TASK_ONLY",
+                    "to": "REQUIREMENTS_DECLARED",
+                },
+            }
+        return {
+            "diagnosis": "NO_RETRIEVAL_COVERAGE",
+            "reason": "extend the task-level research state",
+            "expected_graph_delta": {"operation": "SEARCH_TARGET"},
+        }
+
+    status = str(state.get("status", "UNEXPLORED"))
+    dependencies_ready = all(
+        value == "SATISFIED" for value in state.get("dependency_states", ())
+    )
+    if not dependencies_ready:
+        return {
+            "diagnosis": "DEPENDENCY_NOT_SATISFIED",
+            "reason": "resolve prerequisite requirements before advancing this target",
+            "expected_graph_delta": {"operation": "SATISFY_DEPENDENCY"},
+        }
+    if status == "UNEXPLORED":
+        return {
+            "diagnosis": "NO_RETRIEVAL_COVERAGE",
+            "reason": "search specifically for evidence that resolves this requirement",
+            "expected_graph_delta": {
+                "operation": "SEARCH_TARGET",
+                "from": "UNEXPLORED",
+                "to": "SEARCHED",
+            },
+        }
+    if status == "SEARCHED":
+        if context.get("unfetched_documents"):
+            document = context["unfetched_documents"][0]
+            docid = str((document.get("data") or {}).get("docid", ""))
+            return {
+                "diagnosis": "UNFETCHED_CANDIDATE_DOCUMENT",
+                "reason": "fetch a document already retrieved for this requirement",
+                "expected_graph_delta": {"operation": "FETCH_DOCUMENT"},
+                "suggested_operations": [
+                    {"operation": "fetch", "docid": docid}
+                ]
+                if docid
+                else [],
+            }
+        return {
+            "diagnosis": "STALLED_RETRIEVAL_BRANCH",
+            "reason": "use the query lineage to pursue a distinct evidence path",
+            "expected_graph_delta": {"operation": "ADD_EVIDENCE"},
+        }
+    if status == "EVIDENCE_FOUND":
+        return {
+            "diagnosis": "UNSUPPORTED_CANDIDATE",
+            "reason": "connect verified evidence to a candidate or requirement",
+            "expected_graph_delta": {"operation": "VERIFY_CANDIDATE"},
+        }
+    if status == "CONFLICTED":
+        return {
+            "diagnosis": "CONFLICTING_EVIDENCE",
+            "reason": "inspect the competing evidence and distinguish the alternatives",
+            "expected_graph_delta": {"operation": "RESOLVE_CONFLICT"},
+        }
+    if status == "REFUTED":
+        return {
+            "diagnosis": "REFUTED_REQUIREMENT_PATH",
+            "reason": "change candidate or research branch using the refuting evidence",
+            "expected_graph_delta": {"operation": "ADD_EVIDENCE"},
+        }
+    return {
+        "diagnosis": "DEPENDENCY_NOT_SATISFIED",
+        "reason": "resolve remaining prerequisite coverage",
+        "expected_graph_delta": {"operation": "SATISFY_DEPENDENCY"},
+    }
 
 
 def _call_docids(call: Mapping[str, Any]) -> set[str]:

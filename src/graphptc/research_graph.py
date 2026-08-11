@@ -22,6 +22,7 @@ class ResearchGraphState:
         self._edges: list[dict[str, str]] = []
         self._artifacts: dict[str, Any] = {}
         self._fetched_content: dict[str, str] = {}
+        self._fetched_results: dict[str, dict[str, Any]] = {}
         self._query_count = 0
         self._fetch_count = 0
         self._action_count = 0
@@ -30,7 +31,77 @@ class ResearchGraphState:
         self._node_order: list[str] = []
         self._interface_calls: Counter[str] = Counter()
         self._reuse_hits = 0
+        self._task_graph_initialized = False
         self._add_node("task", "TASK", {"question": str(task)[:1_000]})
+
+    def initialize_task_graph(
+        self, requirements: list[Mapping[str, Any]]
+    ) -> dict[str, Any]:
+        """Install the model's one-time requirement decomposition."""
+        if self._task_graph_initialized:
+            raise ValueError("task graph has already been initialized")
+        if not requirements:
+            raise ValueError("task graph must contain at least one requirement")
+
+        normalized: list[tuple[str, str, list[str]]] = []
+        ids: set[str] = set()
+        for item in requirements:
+            node_id = self._prefixed_id("constraint", str(item.get("id", "")))
+            description = str(item.get("description", "")).strip()
+            if not description:
+                raise ValueError("requirement description must not be empty")
+            if node_id in ids:
+                raise ValueError(f"duplicate requirement {node_id!r}")
+            ids.add(node_id)
+            dependencies = [
+                self._prefixed_id("constraint", str(value))
+                for value in item.get("depends_on", ())
+            ]
+            normalized.append((node_id, description, dependencies))
+
+        for node_id, _description, dependencies in normalized:
+            unknown = [value for value in dependencies if value not in ids]
+            if unknown:
+                raise ValueError(
+                    f"requirement {node_id!r} has unknown dependencies {unknown!r}"
+                )
+            if node_id in dependencies:
+                raise ValueError(f"requirement {node_id!r} cannot depend on itself")
+
+        dependency_map = {node_id: dependencies for node_id, _, dependencies in normalized}
+        visiting: set[str] = set()
+        visited: set[str] = set()
+
+        def visit(node_id: str) -> None:
+            if node_id in visiting:
+                raise ValueError("task graph dependencies must be acyclic")
+            if node_id in visited:
+                return
+            visiting.add(node_id)
+            for dependency in dependency_map[node_id]:
+                visit(dependency)
+            visiting.remove(node_id)
+            visited.add(node_id)
+
+        for node_id in dependency_map:
+            visit(node_id)
+
+        for node_id, description, _dependencies in normalized:
+            self._add_declared_node(
+                node_id,
+                "CONSTRAINT",
+                {"description": description[:500], "origin": "initial_decomposition"},
+            )
+            self._add_edge("requires", "task", node_id)
+        for node_id, _description, dependencies in normalized:
+            for dependency in dependencies:
+                self._add_edge("depends_on", node_id, dependency)
+        self._task_graph_initialized = True
+        self._count_interface("initialize_task_graph")
+        return {
+            "initialized": True,
+            "requirements": [self.requirement_state(node_id) for node_id in dependency_map],
+        }
 
     def search(self, *, query: str) -> list[dict[str, Any]]:
         """Search and record query, document, intent, and reusable artifact nodes."""
@@ -79,6 +150,11 @@ class ResearchGraphState:
 
     def fetch(self, *, docid: str) -> dict[str, Any]:
         """Fetch and retain a source artifact for verified evidence and later reuse."""
+        requested = str(docid)
+        if requested in self._fetched_results:
+            self._reuse_hits += 1
+            self._count_interface("reuse_fetch_artifact")
+            return copy.deepcopy(self._fetched_results[requested])
         result = self._tools.fetch(docid=docid)
         key = str(result.get("docid", docid))
         content = str(result.get("content", ""))
@@ -91,6 +167,7 @@ class ResearchGraphState:
             {"docid": key, "fetched": True},
         )
         self._fetched_content[key] = content
+        self._fetched_results[key] = copy.deepcopy(result)
         self._artifacts[artifact_id] = copy.deepcopy(result)
         self._add_node(
             artifact_id,
@@ -110,6 +187,13 @@ class ResearchGraphState:
         text = str(description).strip()
         if not text:
             raise ValueError("constraint description must not be empty")
+        existing = self._nodes.get(node_id)
+        if (
+            existing is not None
+            and existing["kind"] == "CONSTRAINT"
+            and existing["data"].get("description") == text[:500]
+        ):
+            return {"node_id": node_id, "verified": True}
         self._add_declared_node(node_id, "CONSTRAINT", {"description": text[:500]})
         self._add_edge("requires", "task", node_id)
         return {"node_id": node_id, "verified": True}
@@ -258,12 +342,9 @@ class ResearchGraphState:
         for node_id, node in self._nodes.items():
             if node["kind"] != "CONSTRAINT":
                 continue
-            incoming = [edge["type"] for edge in self._edges if edge["target"] == node_id]
-            evidence_relations = [
-                value for value in incoming if value in {"supports", "refutes", "addresses"}
-            ]
-            if not evidence_relations:
-                constraints.append(self._compact_node(node))
+            state = self.requirement_state(node_id)
+            if state["status"] != "SATISFIED":
+                constraints.append({**self._compact_node(node), **state})
         conflicts = [
             self._candidate_summary(node_id)
             for node_id, node in self._nodes.items()
@@ -305,11 +386,50 @@ class ResearchGraphState:
             "artifact_count": len(self._artifacts),
             "artifact_reuse_hits": self._reuse_hits,
             "verified_evidence": kinds["EVIDENCE"],
+            "task_graph_initialized": self._task_graph_initialized,
+            "requirement_states": dict(
+                Counter(
+                    self.requirement_state(node_id)["status"]
+                    for node_id, node in self._nodes.items()
+                    if node["kind"] == "CONSTRAINT"
+                )
+            ),
             "frontier": self.frontier(),
         }
 
     def interface_counts(self) -> dict[str, int]:
         return dict(self._interface_calls)
+
+    @property
+    def task_graph_initialized(self) -> bool:
+        return self._task_graph_initialized
+
+    def action_snapshot(self, target_id: str) -> dict[str, Any]:
+        """Return deterministic state used to verify an action's graph delta."""
+        target = self._resolve_id(target_id)
+        snapshot = {
+            "target": target,
+            "node_count": len(self._nodes),
+            "edge_count": len(self._edges),
+            "artifact_reuse_hits": self._reuse_hits,
+        }
+        if self._nodes[target]["kind"] == "CONSTRAINT":
+            snapshot.update(self.requirement_state(target))
+        else:
+            snapshot.update(
+                {
+                    "status": "TASK_ONLY" if not self._task_graph_initialized else "ACTIVE",
+                    "queries": self._query_count,
+                    "retrieved_documents": sum(
+                        node["kind"] == "DOCUMENT" for node in self._nodes.values()
+                    ),
+                    "fetched_documents": len(self._fetched_content),
+                    "evidence": sum(
+                        node["kind"] == "EVIDENCE" for node in self._nodes.values()
+                    ),
+                }
+            )
+        return snapshot
 
     def action_targets(self) -> dict[str, list[str]]:
         frontier = self.frontier()
@@ -319,6 +439,7 @@ class ResearchGraphState:
             if node["kind"] in {"CONSTRAINT", "CANDIDATE"}
         ][-self._max_items :]
         continue_targets = [item["id"] for item in frontier["unresolved_constraints"]]
+        continue_targets.sort(key=self._target_priority)
         current = self._current_action_target()
         if current in continue_targets:
             continue_targets = [current, *[item for item in continue_targets if item != current]]
@@ -345,8 +466,41 @@ class ResearchGraphState:
         return {
             "candidates": candidates,
             "unresolved_constraints": [
-                item["id"] for item in frontier["unresolved_constraints"]
+                {"id": item["id"], "status": item["status"]}
+                for item in frontier["unresolved_constraints"]
             ],
+        }
+
+    def requirement_state(self, node_id: str) -> dict[str, Any]:
+        target = self._resolve_id(node_id, {"CONSTRAINT"})
+        dependencies = [
+            edge["target"]
+            for edge in self._edges
+            if edge["type"] == "depends_on" and edge["source"] == target
+        ]
+        dependency_states = [self._requirement_status(value, set()) for value in dependencies]
+        status = self._requirement_status(target, set())
+        query_ids = {
+            edge["source"]
+            for edge in self._edges
+            if edge["type"] == "intends_to_resolve" and edge["target"] == target
+        }
+        document_ids = self._target_document_ids(target)
+        fetched = sum(
+            str(self._nodes[value]["data"].get("docid", "")) in self._fetched_content
+            for value in document_ids
+            if value in self._nodes
+        )
+        evidence_ids = self._constraint_evidence_ids(target)
+        return {
+            "id": target,
+            "status": status,
+            "dependencies": dependencies,
+            "dependency_states": dependency_states,
+            "queries": len(query_ids),
+            "retrieved_documents": len(document_ids),
+            "fetched_documents": fetched,
+            "evidence": len(evidence_ids),
         }
 
 
@@ -418,7 +572,7 @@ class ResearchGraphState:
             for node_id in all_document_ids
             if node_id in self._nodes
         )
-        return {
+        result = {
             "target": self._compact_node(self._nodes[target]),
             "retrieval_memory": {
                 "attempt_count": len(all_query_ids),
@@ -435,6 +589,71 @@ class ResearchGraphState:
                 for evidence_id in dict.fromkeys(evidence_ids)
             ][: self._max_items],
         }
+        if self._nodes[target]["kind"] == "CONSTRAINT":
+            result["requirement_state"] = self.requirement_state(target)
+        return result
+
+    def _constraint_evidence_ids(self, node_id: str) -> set[str]:
+        return {
+            edge["source"]
+            for edge in self._edges
+            if edge["target"] == node_id
+            and edge["type"] in {"supports", "refutes", "addresses"}
+            and self._nodes.get(edge["source"], {}).get("kind") == "EVIDENCE"
+        }
+
+    def _requirement_status(self, node_id: str, path: set[str]) -> str:
+        if node_id in path:
+            return "UNEXPLORED"
+        path = {*path, node_id}
+        evidence_ids = self._constraint_evidence_ids(node_id)
+        polarities = {
+            edge["type"]
+            for edge in self._edges
+            if edge["source"] in evidence_ids and edge["type"] in _RELATIONS
+        }
+        dependencies = [
+            edge["target"]
+            for edge in self._edges
+            if edge["type"] == "depends_on" and edge["source"] == node_id
+        ]
+        dependencies_ready = all(
+            self._requirement_status(value, path) == "SATISFIED"
+            for value in dependencies
+        )
+        if polarities == {"supports", "refutes"}:
+            return "CONFLICTED"
+        if "refutes" in polarities:
+            return "REFUTED"
+        if "supports" in polarities:
+            return "SATISFIED" if dependencies_ready else "SUPPORTED"
+        if evidence_ids:
+            return "EVIDENCE_FOUND"
+        if any(
+            edge["type"] == "intends_to_resolve" and edge["target"] == node_id
+            for edge in self._edges
+        ):
+            return "SEARCHED"
+        return "UNEXPLORED"
+
+    def _target_priority(self, node_id: str) -> tuple[int, int, int]:
+        state = self.requirement_state(node_id)
+        dependencies_ready = all(
+            value == "SATISFIED" for value in state["dependency_states"]
+        )
+        status_rank = {
+            "CONFLICTED": 0,
+            "REFUTED": 1,
+            "SUPPORTED": 1,
+            "EVIDENCE_FOUND": 2,
+            "SEARCHED": 3,
+            "UNEXPLORED": 4,
+        }.get(state["status"], 5)
+        downstream = sum(
+            edge["type"] == "depends_on" and edge["target"] == node_id
+            for edge in self._edges
+        )
+        return (0 if dependencies_ready else 1, status_rank, -downstream)
 
     def _target_document_ids(self, target_id: str | None) -> set[str]:
         if target_id is None:

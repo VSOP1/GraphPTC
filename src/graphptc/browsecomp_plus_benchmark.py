@@ -905,7 +905,9 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         + "judgment; the runtime will not choose or rewrite your program. The action and target "
         + "metadata must describe the program you actually execute. When useful, declare the "
         + "currently targeted semantic constraint with the flat constraint_id and constraint "
-        + "fields. Include additional newly identified constraints, "
+        + "fields. On the first PTC block, initialize task_graph once with stable, independently "
+        + "verifiable requirements and their depends_on relations; do not repeat or redefine that "
+        + "initial decomposition on later blocks. Include additional newly identified constraints, "
         + "candidates, or evidence in "
         + "research_updates; empty arrays mean no semantic update. The target must be task or a "
         + "node already present or declared in the same research_updates object. "
@@ -918,7 +920,9 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         + "When fetched content supports a plausible answer, declare the candidate and "
         + "attach an exact supporting or refuting quote in the same program before printing the "
         + "compact observation. For CONTINUE, use retrieval_memory to avoid repeating stalled "
-        + "queries and to preserve productive query directions for the current target.",
+        + "queries and to preserve productive query directions for the current target. When the "
+        + "selected opportunity contains suggested_operations, execute that concrete graph-backed "
+        + "operation before starting unrelated broad retrieval.",
         user_prompt,
     )
 
@@ -1012,6 +1016,34 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
                 },
             },
             "required": ["constraints", "candidates", "evidence"],
+            "additionalProperties": False,
+        }
+        properties["task_graph"] = {
+            "type": "object",
+            "description": (
+                "One-time task decomposition for the first PTC block. Omit on later blocks. "
+                "Requirements must be independently verifiable; depends_on contains requirement ids."
+            ),
+            "properties": {
+                "requirements": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string", "minLength": 1},
+                            "description": {"type": "string", "minLength": 1},
+                            "depends_on": {
+                                "type": "array",
+                                "items": {"type": "string", "minLength": 1},
+                            },
+                        },
+                        "required": ["id", "description", "depends_on"],
+                        "additionalProperties": False,
+                    },
+                }
+            },
+            "required": ["requirements"],
             "additionalProperties": False,
         }
         spec["function"]["parameters"]["required"] = [
@@ -1349,14 +1381,34 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         return None
     actions: Counter[str] = Counter()
     interfaces: Counter[str] = Counter()
+    diagnoses: Counter[str] = Counter()
+    requirement_states: Counter[str] = Counter()
     for value in values:
         actions.update(value.get("action_distribution") or {})
+        diagnoses.update(
+            str(item["diagnosis"])
+            for item in value.get("action_history", ())
+            if item.get("diagnosis")
+        )
         graph = value.get("research_graph") or {}
         interfaces.update(graph.get("interface_calls") or {})
+        requirement_states.update(graph.get("requirement_states") or {})
     return {
         "episodes": len(values),
         "observation_calls": sum(int(value.get("observation_calls", 0)) for value in values),
         "action_distribution": dict(actions),
+        "diagnosis_distribution": dict(diagnoses),
+        "task_graph_initialized_episodes": sum(
+            bool((value.get("research_graph") or {}).get("task_graph_initialized"))
+            for value in values
+        ),
+        "realized_graph_deltas": sum(
+            int(value.get("realized_graph_deltas", 0)) for value in values
+        ),
+        "missed_graph_deltas": sum(
+            int(value.get("missed_graph_deltas", 0)) for value in values
+        ),
+        "requirement_states": dict(requirement_states),
         "invalid_action_targets": sum(
             int(value.get("invalid_action_targets", 0)) for value in values
         ),

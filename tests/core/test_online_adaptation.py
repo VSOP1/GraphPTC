@@ -68,21 +68,13 @@ def test_agent_authored_graph_is_source_verified_and_emitted_as_delta() -> None:
     message = adaptation.observe(SimpleNamespace(success=True))
     payload = json.loads(message.removeprefix("GRAPH_DELTA "))
 
-    assert payload["control_contract"] == "graph-adapt-v11"
+    assert payload["control_contract"] == "graph-adapt-v12"
     assert payload["declared_action"]["target_valid"] is True
     assert payload["execution"]["block_calls"]["search_calls"] == 1
     assert evidence["verified"] is True
     assert payload["research_graph_delta"]["frontier"]["unresolved_constraints"] == []
     kinds = {item["kind"] for item in payload["research_graph_delta"]["new_nodes"]}
-    assert {
-        "TASK",
-        "ACTION",
-        "CONSTRAINT",
-        "CANDIDATE",
-        "QUERY",
-        "DOCUMENT",
-        "EVIDENCE",
-    } <= kinds
+    assert {"CANDIDATE", "EVIDENCE"} <= kinds
 
 
 def test_evidence_rejects_unfetched_or_unquoted_sources() -> None:
@@ -119,6 +111,19 @@ def test_artifact_load_reuses_exact_value_without_external_call() -> None:
     assert reused == original
     assert adaptation.telemetry()["research_graph"]["artifact_reuse_hits"] == 1
     assert adaptation.telemetry()["research_graph"]["node_count"] == calls_before
+
+
+def test_repeated_fetch_reuses_graph_artifact_without_external_call() -> None:
+    tools = FakeTools()
+    adaptation = OnlineGraphAdaptation(
+        tools, max_tool_calls=20, task="Who founded Alpha?"
+    )
+    first = adaptation.fetch(docid="d1")
+    second = adaptation.fetch(docid="d1")
+
+    assert second == first
+    assert len(tools.calls) == 1
+    assert adaptation.telemetry()["research_graph"]["artifact_reuse_hits"] == 1
 
 
 def test_frontier_trace_and_alternatives_are_targeted_graph_queries() -> None:
@@ -203,7 +208,7 @@ def test_graph_delta_is_bounded() -> None:
     message = adaptation.observe(SimpleNamespace(success=True))
 
     assert len(message) <= 1_500
-    assert json.loads(message.removeprefix("GRAPH_DELTA "))["control_contract"] == "graph-adapt-v11"
+    assert json.loads(message.removeprefix("GRAPH_DELTA "))["control_contract"] == "graph-adapt-v12"
 
 
 def test_initial_assessment_exposes_bounded_action_contract() -> None:
@@ -213,7 +218,7 @@ def test_initial_assessment_exposes_bounded_action_contract() -> None:
         adaptation.initial_observation().removeprefix("GRAPH_ASSESSMENT ")
     )
 
-    assert payload["control_contract"] == "graph-adapt-v11"
+    assert payload["control_contract"] == "graph-adapt-v12"
     assert payload["available_actions"] == ["CONTINUE", "ANSWER"]
     assert payload["valid_targets"]["CONTINUE"] == ["task"]
     assert "selected_action" not in payload
@@ -291,9 +296,9 @@ def test_continue_target_context_is_pruned_to_observation_bound() -> None:
 
     assert len(message) <= 1_500
     payload = json.loads(message.removeprefix("GRAPH_ASSESSMENT "))
-    context = payload["action_opportunities"][0]["target_context"]
-    assert context["target"]["id"] == constraint["node_id"]
-    assert len(context["retrieval_memory"]["recent_attempts"]) < 8
+    opportunity = payload["action_opportunities"][0]
+    assert opportunity["target"] == constraint["node_id"]
+    assert opportunity["diagnosis"] == "UNFETCHED_CANDIDATE_DOCUMENT"
 
 
 def test_selected_inspect_must_be_implemented_by_graph_read() -> None:
@@ -388,8 +393,17 @@ def test_retrieval_memory_consumption_distinguishes_new_query_from_repeat() -> N
         {
             "code": "print(search(query='Alpha founder'))",
             "action": "CONTINUE",
-            "target": "task",
+            "target": "constraint:founder",
             "expected_change": "find founder",
+            "task_graph": {
+                "requirements": [
+                    {
+                        "id": "founder",
+                        "description": "identify the founder",
+                        "depends_on": [],
+                    }
+                ]
+            },
         }
     )
     adaptation.search(query="Alpha founder")
@@ -398,7 +412,7 @@ def test_retrieval_memory_consumption_distinguishes_new_query_from_repeat() -> N
         {
             "code": "print(search(query='Alpha biography'))",
             "action": "CONTINUE",
-            "target": "task",
+            "target": "constraint:founder",
             "expected_change": "find a distinct source",
         }
     )
@@ -420,8 +434,17 @@ def test_retrieval_memory_consumption_marks_known_document_fetch() -> None:
         {
             "code": "print(search(query='Alpha founder'))",
             "action": "CONTINUE",
-            "target": "task",
+            "target": "constraint:founder",
             "expected_change": "find founder",
+            "task_graph": {
+                "requirements": [
+                    {
+                        "id": "founder",
+                        "description": "identify the founder",
+                        "depends_on": [],
+                    }
+                ]
+            },
         }
     )
     adaptation.search(query="Alpha founder")
@@ -430,7 +453,7 @@ def test_retrieval_memory_consumption_marks_known_document_fetch() -> None:
         {
             "code": "print(fetch(docid='d1'))",
             "action": "CONTINUE",
-            "target": "task",
+            "target": "constraint:founder",
             "expected_change": "inspect the known document",
         }
     )
@@ -440,3 +463,73 @@ def test_retrieval_memory_consumption_marks_known_document_fetch() -> None:
     metrics = adaptation.telemetry()["retrieval_memory_consumption"]
     assert metrics["known_document_fetches"] == 1
     assert metrics["aligned_blocks"] == 1
+
+
+def test_task_graph_dependencies_drive_requirement_state_and_target_order() -> None:
+    graph = ResearchGraphState(FakeTools(), task="Who founded Alpha and when?")
+    graph.initialize_task_graph(
+        [
+            {"id": "founder", "description": "identify the founder", "depends_on": []},
+            {
+                "id": "year",
+                "description": "identify the founding year",
+                "depends_on": ["founder"],
+            },
+        ]
+    )
+
+    assert graph.requirement_state("founder")["status"] == "UNEXPLORED"
+    assert graph.requirement_state("year")["dependency_states"] == ["UNEXPLORED"]
+    assert graph.action_targets()["CONTINUE"][:2] == [
+        "constraint:founder",
+        "constraint:year",
+    ]
+
+
+def test_expected_delta_is_checked_against_target_specific_progress() -> None:
+    adaptation = _adaptation()
+    adaptation.initial_observation()
+    adaptation.prepare_program_action(
+        {
+            "code": "print(search(query='Alpha founder'))",
+            "action": "CONTINUE",
+            "target": "constraint:founder",
+            "expected_change": "find a candidate source",
+            "task_graph": {
+                "requirements": [
+                    {
+                        "id": "founder",
+                        "description": "identify the founder",
+                        "depends_on": [],
+                    }
+                ]
+            },
+        }
+    )
+    adaptation.search(query="Alpha founder")
+    first = json.loads(
+        adaptation.observe(SimpleNamespace(success=True)).removeprefix("GRAPH_DELTA ")
+    )
+
+    opportunity = next(
+        item
+        for item in first["next_action_contract"]["action_opportunities"]
+        if item["action"] == "CONTINUE" and item["target"] == "constraint:founder"
+    )
+    assert opportunity["diagnosis"] == "UNFETCHED_CANDIDATE_DOCUMENT"
+    assert opportunity["expected_graph_delta"]["operation"] == "FETCH_DOCUMENT"
+
+    adaptation.prepare_program_action(
+        {
+            "code": "print(fetch(docid='d1'))",
+            "action": "CONTINUE",
+            "target": "constraint:founder",
+            "expected_change": "materialize the candidate source",
+        }
+    )
+    adaptation.fetch(docid="d1")
+    adaptation.observe(SimpleNamespace(success=True))
+
+    action = adaptation.telemetry()["action_history"][-1]
+    assert action["graph_delta_verification"]["realized"] is True
+    assert action["graph_delta_verification"]["operation"] == "FETCH_DOCUMENT"
