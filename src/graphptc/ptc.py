@@ -126,6 +126,7 @@ class PTCBlockTrace:
     invocation_id: str | None
     runtime_calls: int
     program_analysis: dict[str, Any] = field(default_factory=dict)
+    runtime_trace: dict[str, Any] = field(default_factory=dict)
     error_type: str | None = None
     error_message: str | None = None
 
@@ -216,6 +217,7 @@ class OriginalPTCAgent:
             Callable[[dict[str, Any]], Mapping[str, Any] | None] | None
         ) = None,
         adaptation_initial_observation: Callable[[], str] | None = None,
+        message_projection_callback: Callable[[list[dict[str, Any]]], None] | None = None,
     ) -> None:
         self._model = model
         self._search_tools = search_tools
@@ -241,6 +243,7 @@ class OriginalPTCAgent:
         self._block_observation_factory = block_observation_factory
         self._ptc_call_metadata_callback = ptc_call_metadata_callback
         self._adaptation_initial_observation = adaptation_initial_observation
+        self._message_projection_callback = message_projection_callback
 
     def run(self, task: str) -> AgentResult:
         started = time.perf_counter()
@@ -420,6 +423,8 @@ class OriginalPTCAgent:
                             "content": output,
                         }
                     )
+                    if trace is not None and self._message_projection_callback is not None:
+                        self._message_projection_callback(messages)
                     if (
                         (not is_error or self._post_block_message_on_error)
                         and trace is not None

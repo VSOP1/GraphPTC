@@ -153,7 +153,6 @@ def test_continue_targets_preserve_the_current_unresolved_branch() -> None:
 
     assert targets == [second["node_id"], first["node_id"]]
 
-
 def test_explicit_action_target_validation_is_side_channel_telemetry() -> None:
     adaptation = _adaptation()
     adaptation.record_action(

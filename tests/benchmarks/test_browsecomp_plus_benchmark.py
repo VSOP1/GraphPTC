@@ -202,6 +202,7 @@ def test_online_graph_adaptation_has_typed_research_contract(tmp_path: Path) -> 
         "CONTINUE",
         "INSPECT",
         "PATCH",
+        "REPLAN",
         "REUSE_REPLAY",
     ]
     system_prompt, _ = benchmark._prompt_pair(adapted)

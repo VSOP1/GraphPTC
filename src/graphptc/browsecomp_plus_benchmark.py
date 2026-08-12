@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import json
 import platform
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
@@ -38,10 +39,16 @@ from .direct_tool_agent import DirectToolAgent
 from .local_search import OfficialCorpusSearchTools
 from .exact_reuse import ExactReuseSearchTools
 from .graph_progress import GraphProgressView
+from .graph_agent import (
+    GraphAgentHooks,
+    append_graph_runtime_contract,
+    extend_ptc_spec_with_graph_control,
+)
 from .online_adaptation import OnlineGraphAdaptation
 from .model import OpenAIChatModel
 from .observability import ExecutionObserver
-from .ptc import extract_result_tag
+from .ptc import ModelRequestTrace, extract_result_tag
+from .model import usage_to_dict
 from .experiments.phase_planning import PHASE_PLANNING_SUFFIX
 from .experiments.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
 
@@ -174,7 +181,8 @@ GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST: tuple[dict[str, Any], ...] = (
     {
         "name": "graph_load_artifact",
         "description": (
-            "Load an earlier search/fetch artifact without issuing a new external retrieval call."
+            "Load a persisted graph artifact, including an archived block observation, without "
+            "repeating the action that produced it."
         ),
         "input_schema": {
             "type": "object",
@@ -277,6 +285,103 @@ selected candidate is supported, and no material conflict remains. Otherwise tar
 missing requirement or conflict. Return the concise final answer inside <result> and </result> tags;
 separate multiple answers with commas.
 </answer_readiness>"""
+
+
+_GRAPH_ANSWER_REVIEW_SYSTEM = """You are a conservative final-answer verifier for an agent.
+Use only the supplied task graph and source-verified evidence. KEEP the proposed answer unless the
+verified evidence directly proves that it is wrong, incomplete, or uses a less precise entity name.
+Never invent a replacement from general knowledge. Return exactly one JSON object with keys
+decision (KEEP or REVISE), answer, and reason. For KEEP, copy the proposed answer exactly."""
+
+
+def _review_graph_answer(
+    *,
+    model: OpenAIChatModel,
+    result: Any,
+    proposed_answer: str,
+    context: dict[str, Any],
+    timeout_seconds: float,
+) -> tuple[str, dict[str, Any]]:
+    evidence = context.get("verified_evidence")
+    if not isinstance(evidence, list) or not evidence:
+        return proposed_answer, {"status": "skipped", "reason": "no_verified_evidence"}
+    payload = {
+        "proposed_answer": proposed_answer,
+        "task_graph": context,
+    }
+    messages = [
+        {
+            "role": "user",
+            "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        }
+    ]
+    started = time.perf_counter()
+    try:
+        turn = model.create_turn(
+            system=_GRAPH_ANSWER_REVIEW_SYSTEM,
+            messages=messages,
+            tools=[],
+            timeout_seconds=timeout_seconds,
+            max_completion_tokens=512,
+            thinking="disabled",
+        )
+    except Exception as exc:
+        return proposed_answer, {
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "error": str(exc)[:500],
+        }
+    duration_ms = (time.perf_counter() - started) * 1_000
+    result.model_requests += 1
+    result.usage = result.usage + turn.usage
+    result.duration_ms += duration_ms
+    result.requests.append(
+        ModelRequestTrace(
+            turn=result.model_requests,
+            kind="graph_answer_review",
+            tools_available=False,
+            context_chars=len(json.dumps(messages, ensure_ascii=False)),
+            duration_ms=duration_ms,
+            stop_reason=turn.stop_reason,
+            tool_calls=len(turn.tool_calls),
+            usage=usage_to_dict(turn.usage),
+            attempts=[asdict(attempt) for attempt in turn.attempts],
+        )
+    )
+    parsed = _parse_graph_answer_review(turn.text)
+    if parsed is None:
+        return proposed_answer, {
+            "status": "invalid",
+            "raw_response": turn.text[:1_000],
+        }
+    decision = str(parsed.get("decision", "")).strip().upper()
+    reviewed = str(parsed.get("answer", "")).strip()
+    if decision == "REVISE" and reviewed:
+        result.answer = f"<result>{reviewed}</result>"
+        return reviewed, {
+            "status": "revised",
+            "decision": decision,
+            "original_answer": proposed_answer,
+            "reviewed_answer": reviewed,
+            "reason": str(parsed.get("reason", ""))[:1_000],
+        }
+    return proposed_answer, {
+        "status": "kept",
+        "decision": "KEEP",
+        "reason": str(parsed.get("reason", ""))[:1_000],
+    }
+
+
+def _parse_graph_answer_review(text: str) -> dict[str, Any] | None:
+    value = text.strip()
+    if value.startswith("```"):
+        lines = value.splitlines()
+        value = "\n".join(lines[1:-1]).strip()
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE = """Answer the following question using the
@@ -472,6 +577,11 @@ def run_browsecomp_plus_benchmark(
                 if adaptation_mode == "online"
                 else None
             )
+            graph_hooks = (
+                GraphAgentHooks.from_controller(graph_adaptation)
+                if graph_adaptation is not None
+                else None
+            )
             agent_kwargs = {
                 "model": model,
                 "search_tools": tools,
@@ -479,18 +589,8 @@ def run_browsecomp_plus_benchmark(
                 "system_prompt": system_prompt,
                 "user_prompt_template": user_prompt_template,
                 "runtime_functions": (
-                    (
-                        graph_adaptation.search,
-                        graph_adaptation.fetch,
-                        graph_adaptation.graph_add_constraint,
-                        graph_adaptation.graph_add_candidate,
-                        graph_adaptation.graph_add_evidence,
-                        graph_adaptation.graph_frontier,
-                        graph_adaptation.graph_trace,
-                        graph_adaptation.graph_load_artifact,
-                        graph_adaptation.graph_alternatives,
-                    )
-                    if graph_adaptation is not None
+                    graph_hooks.runtime_functions
+                    if graph_hooks is not None
                     else (
                         (tools.search, tools.fetch)
                         if graph_progress is None or progress_mode.endswith("_auto")
@@ -506,15 +606,17 @@ def run_browsecomp_plus_benchmark(
                 ),
                 "post_block_message_on_error": False,
                 "block_observation_factory": (
-                    None if graph_adaptation is None else graph_adaptation.observe
+                    None if graph_hooks is None else graph_hooks.block_observation_factory
                 ),
                 "ptc_call_metadata_callback": (
                     None
-                    if graph_adaptation is None
-                    else graph_adaptation.prepare_program_action
+                    if graph_hooks is None
+                    else graph_hooks.ptc_call_metadata_callback
                 ),
                 "adaptation_initial_observation": (
-                    None if graph_adaptation is None else graph_adaptation.initial_observation
+                    None
+                    if graph_hooks is None
+                    else graph_hooks.adaptation_initial_observation
                 ),
                 "checkpoint_callback": lambda snapshot: _write_checkpoint_bundle(
                     checkpoint_path,
@@ -561,6 +663,19 @@ def run_browsecomp_plus_benchmark(
             prediction = (
                 extract_result_tag(result.answer) if result.status == "success" else None
             )
+            answer_review = None
+            if (
+                prediction is not None
+                and graph_adaptation is not None
+                and config.runtime.graph_answer_review
+            ):
+                prediction, answer_review = _review_graph_answer(
+                    model=model,
+                    result=result,
+                    proposed_answer=prediction,
+                    context=graph_adaptation.answer_review_context(),
+                    timeout_seconds=config.model.timeout_seconds,
+                )
             if graph_adaptation is not None:
                 graph_adaptation.finish(answered=prediction is not None)
             status = "success" if prediction is not None else "failed"
@@ -602,6 +717,7 @@ def run_browsecomp_plus_benchmark(
                 "graph_adaptation": (
                     None if graph_adaptation is None else graph_adaptation.telemetry()
                 ),
+                "graph_answer_review": answer_review,
             }
             checkpoint_path.unlink(missing_ok=True)
         except Exception as exc:
@@ -941,11 +1057,6 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         ) from exc
     if config.runtime.graph_adaptation_mode != "online":
         return system_prompt, user_prompt
-    graph_contract = json.dumps(
-        GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST,
-        ensure_ascii=False,
-        indent=2,
-    )
     if variant == "fewshot-ptc-graph-v2":
         graph_guidance = GRAPH_ADAPTATION_V2_GUIDANCE
     else:
@@ -973,13 +1084,15 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
             + "queries and to preserve productive query directions for the current target. When the "
             + "selected opportunity contains suggested_operations, execute that concrete graph-backed "
             + "operation before starting unrelated broad retrieval."
+            + " When the first opportunity is REPLAN because recent actions reproduced equivalent "
+            + "artifacts, change the approach or dependency path before issuing more tool calls."
         )
     return (
-        system_prompt
-        + "\n\n<graph_runtime_definitions>\n"
-        + graph_contract
-        + "\n</graph_runtime_definitions>\n\n"
-        + graph_guidance,
+        append_graph_runtime_contract(
+            system_prompt,
+            manifest=GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST,
+            guidance=graph_guidance,
+        ),
         user_prompt,
     )
 
@@ -995,21 +1108,6 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
             "the program. Semantic graph updates are source-verified by the runtime."
         )
         properties = spec["function"]["parameters"]["properties"]
-        properties["action"] = {
-            "type": "string",
-            "enum": ["CONTINUE", "INSPECT", "PATCH", "REUSE_REPLAY"],
-            "description": "The explicit Adapt action implemented by this PTC block.",
-        }
-        properties["target"] = {
-            "type": "string",
-            "minLength": 1,
-            "description": "An existing graph node id; use task for the initial block.",
-        }
-        properties["expected_change"] = {
-            "type": "string",
-            "minLength": 1,
-            "description": "The graph state change this block is intended to produce.",
-        }
         properties["constraint_id"] = {
             "type": "string",
             "minLength": 1,
@@ -1103,13 +1201,20 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
             "required": ["requirements"],
             "additionalProperties": False,
         }
-        spec["function"]["parameters"]["required"] = [
-            "code",
-            "action",
-            "target",
-            "expected_change",
-        ]
-        return spec
+        return extend_ptc_spec_with_graph_control(
+            spec,
+            include_input_artifacts=False,
+            action_description="The explicit Adapt action implemented by this PTC block.",
+            target_description="An existing graph node id; use task for the initial block.",
+            expected_change_description=(
+                "The graph state change this block is intended to produce."
+            ),
+            extra_properties={
+                key: value
+                for key, value in properties.items()
+                if key in {"constraint_id", "constraint", "research_updates", "task_graph"}
+            },
+        )
     if config.runtime.graph_progress_mode in {"off", "placebo_auto", "graph_auto"}:
         return BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC
     if config.runtime.graph_progress_mode not in {"placebo", "graph"}:
@@ -1642,6 +1747,10 @@ def _implementation_sha256() -> str:
         "persistent_worker.py",
         "direct_tool_agent.py",
         "exact_reuse.py",
+        "episode_graph.py",
+        "execution_projection.py",
+        "graph_agent.py",
+        "tool_effects.py",
         "online_adaptation.py",
         "research_graph.py",
     ):

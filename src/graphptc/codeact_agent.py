@@ -102,6 +102,7 @@ class CodeActPTCAgent(OriginalPTCAgent):
             Callable[[dict[str, Any]], Mapping[str, Any] | None] | None
         ) = None,
         adaptation_initial_observation: Callable[[], str] | None = None,
+        message_projection_callback: Callable[[list[dict[str, Any]]], None] | None = None,
         observer: ExecutionObserver | None = None,
         active_repair_callback: (
             Callable[[str, PersistentIpcRuntime], dict[str, Any]] | None
@@ -133,6 +134,7 @@ class CodeActPTCAgent(OriginalPTCAgent):
             block_observation_factory=block_observation_factory,
             ptc_call_metadata_callback=ptc_call_metadata_callback,
             adaptation_initial_observation=adaptation_initial_observation,
+            message_projection_callback=message_projection_callback,
         )
 
     def _create_registry(
@@ -210,6 +212,18 @@ class CodeActPTCAgent(OriginalPTCAgent):
                 block_id=block_id,
                 data={**trace.__dict__, "runtime_trace": runtime_trace},
             )
+        else:
+            runtime_trace = (
+                self._persistent_runtime.last_execution_trace
+                if self._persistent_runtime is not None
+                else {}
+            )
+        trace = PTCBlockTrace(
+            **{
+                **trace.__dict__,
+                "runtime_trace": runtime_trace,
+            }
+        )
         if (
             is_error
             and block_id is not None

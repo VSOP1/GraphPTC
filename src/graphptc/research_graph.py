@@ -5,34 +5,67 @@ import re
 from collections import Counter
 from typing import Any, Mapping
 
+from .episode_graph import EpisodeGraph
+from .tool_effects import ToolEffectContract, ToolGraphRuntime
+
 
 _ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,80}$")
 _RELATIONS = {"supports", "refutes"}
 
 
-class ResearchGraphState:
-    """Agent-authored, runtime-verified research state for one episode."""
+class RetrievalGraphProjection:
+    """Retrieval semantics projected onto the domain-neutral episode graph."""
 
-    def __init__(self, tools: Any, *, task: str, max_items: int = 4) -> None:
+    def __init__(
+        self,
+        tools: Any,
+        *,
+        task: str,
+        max_items: int = 4,
+        graph: EpisodeGraph | None = None,
+    ) -> None:
         if max_items < 1:
             raise ValueError("max_items must be positive")
         self._tools = tools
         self._max_items = max_items
-        self._nodes: dict[str, dict[str, Any]] = {}
-        self._edges: list[dict[str, str]] = []
-        self._artifacts: dict[str, Any] = {}
+        self._episode_graph = graph or EpisodeGraph(task=task)
+        self._nodes = self._episode_graph.nodes
+        self._edges = self._episode_graph.edges
+        self._artifacts = self._episode_graph.artifacts
+        self._tool_runtime = ToolGraphRuntime(self._episode_graph)
+        self._tool_runtime.register(
+            tools.search,
+            ToolEffectContract(
+                name="search",
+                effect="read",
+                deterministic=False,
+                cacheable=False,
+                artifact_kind="search_result",
+            ),
+        )
+        self._tool_runtime.register(
+            tools.fetch,
+            ToolEffectContract(
+                name="fetch",
+                effect="read",
+                deterministic=True,
+                cacheable=True,
+                artifact_kind="fetched_resource",
+            ),
+        )
         self._fetched_content: dict[str, str] = {}
         self._fetched_results: dict[str, dict[str, Any]] = {}
         self._query_count = 0
         self._fetch_count = 0
         self._action_count = 0
-        self._node_cursor = 0
-        self._edge_cursor = 0
-        self._node_order: list[str] = []
         self._interface_calls: Counter[str] = Counter()
         self._reuse_hits = 0
         self._task_graph_initialized = False
         self._add_node("task", "TASK", {"question": str(task)[:1_000]})
+
+    @property
+    def episode_graph(self) -> EpisodeGraph:
+        return self._episode_graph
 
     def initialize_task_graph(
         self, requirements: list[Mapping[str, Any]]
@@ -107,10 +140,16 @@ class ResearchGraphState:
         """Search and record query, document, intent, and reusable artifact nodes."""
         target = self._current_action_target()
         prior_document_ids = self._target_document_ids(target)
-        results = self._tools.search(query=query)
+        invocation = self._tool_runtime.invoke(
+            "search",
+            target=target,
+            query=query,
+        )
+        results = invocation.value
         self._query_count += 1
         query_id = f"query:{self._query_count}"
-        artifact_id = f"artifact:search:{self._query_count}"
+        assert invocation.artifact_id is not None
+        artifact_id = invocation.artifact_id
         result_docids = {
             self._document_id(str(item.get("docid", "")))
             for item in results
@@ -139,7 +178,6 @@ class ResearchGraphState:
                 {"docid": docid, "snippet": str(item.get("snippet", ""))[:240]},
             )
             self._add_edge("retrieves", query_id, document_id)
-        self._artifacts[artifact_id] = copy.deepcopy(results)
         self._add_node(
             artifact_id,
             "ARTIFACT",
@@ -151,15 +189,20 @@ class ResearchGraphState:
     def fetch(self, *, docid: str) -> dict[str, Any]:
         """Fetch and retain a source artifact for verified evidence and later reuse."""
         requested = str(docid)
-        if requested in self._fetched_results:
-            self._reuse_hits += 1
+        invocation = self._tool_runtime.invoke(
+            "fetch",
+            target=self._current_action_target(),
+            docid=requested,
+        )
+        if invocation.reused:
             self._count_interface("reuse_fetch_artifact")
-            return copy.deepcopy(self._fetched_results[requested])
-        result = self._tools.fetch(docid=docid)
+            return copy.deepcopy(invocation.value)
+        result = invocation.value
         key = str(result.get("docid", docid))
         content = str(result.get("content", ""))
         self._fetch_count += 1
-        artifact_id = f"artifact:fetch:{self._fetch_count}"
+        assert invocation.artifact_id is not None
+        artifact_id = invocation.artifact_id
         document_id = self._document_id(key)
         self._add_node(
             document_id,
@@ -168,7 +211,6 @@ class ResearchGraphState:
         )
         self._fetched_content[key] = content
         self._fetched_results[key] = copy.deepcopy(result)
-        self._artifacts[artifact_id] = copy.deepcopy(result)
         self._add_node(
             artifact_id,
             "ARTIFACT",
@@ -286,7 +328,7 @@ class ResearchGraphState:
         self._count_interface("graph_load_artifact")
         key = self._resolve_id(artifact_id, {"ARTIFACT"})
         self._reuse_hits += 1
-        return copy.deepcopy(self._artifacts[key])
+        return self._episode_graph.load_artifact(key)
 
     def graph_alternatives(self, *, target_id: str) -> dict[str, Any]:
         """List alternative candidates and their verified support/refutation counts."""
@@ -362,17 +404,42 @@ class ResearchGraphState:
             "unresolved_constraints": constraints[: self._max_items],
             "conflicted_candidates": conflicts[: self._max_items],
             "unfetched_documents": unfetched[: self._max_items],
-            "reusable_artifacts": list(self._artifacts)[-self._max_items :],
+            "reusable_artifacts": [
+                artifact_id
+                for artifact_id in self._artifacts
+                if self._nodes.get(artifact_id, {}).get("data", {}).get("operation")
+                in {"search", "fetch"}
+            ][-self._max_items :],
         }
 
     def delta(self) -> dict[str, Any]:
-        new_ids = self._node_order[self._node_cursor :]
-        new_edges = self._edges[self._edge_cursor :]
-        self._node_cursor = len(self._node_order)
-        self._edge_cursor = len(self._edges)
+        delta = self._episode_graph.delta()
+        visible_nodes = [
+            node
+            for node in delta.nodes
+            if node["kind"]
+            in {
+                "TASK",
+                "CONSTRAINT",
+                "CANDIDATE",
+                "EVIDENCE",
+                "QUERY",
+                "DOCUMENT",
+                "ACTION",
+            }
+            or (
+                node["kind"] == "ARTIFACT"
+                and node.get("data", {}).get("operation") in {"search", "fetch"}
+            )
+        ]
+        visible_ids = {node["id"] for node in visible_nodes}
         return {
-            "new_nodes": [self._compact_node(self._nodes[node_id]) for node_id in new_ids],
-            "new_edges": copy.deepcopy(new_edges),
+            "new_nodes": [self._compact_node(node) for node in visible_nodes],
+            "new_edges": [
+                edge
+                for edge in delta.edges
+                if edge["source"] in visible_ids and edge["target"] in visible_ids
+            ],
             "frontier": self.frontier(),
         }
 
@@ -384,7 +451,7 @@ class ResearchGraphState:
             "node_kinds": dict(kinds),
             "interface_calls": dict(self._interface_calls),
             "artifact_count": len(self._artifacts),
-            "artifact_reuse_hits": self._reuse_hits,
+            "artifact_reuse_hits": self._reuse_hits + self._tool_runtime.reuse_hits,
             "verified_evidence": kinds["EVIDENCE"],
             "task_graph_initialized": self._task_graph_initialized,
             "requirement_states": dict(
@@ -442,7 +509,8 @@ class ResearchGraphState:
         continue_targets.sort(key=self._target_priority)
         current = self._current_action_target()
         if current in continue_targets:
-            continue_targets = [current, *[item for item in continue_targets if item != current]]
+            others = [item for item in continue_targets if item != current]
+            continue_targets = [current, *others]
         if not continue_targets:
             continue_targets = ["task"]
         return {
@@ -453,11 +521,130 @@ class ResearchGraphState:
             "REUSE_REPLAY": list(frontier["reusable_artifacts"]),
         }
 
+    def control_view(
+        self,
+        execution: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Build the retrieval projection's targets and semantic opportunities."""
+        targets = self.action_targets()
+        opportunities: list[dict[str, Any]] = []
+        for index, continue_target in enumerate(targets["CONTINUE"]):
+            full_context = self.target_context(continue_target)
+            item = {
+                "action": "CONTINUE",
+                "target": continue_target,
+                **_diagnose_retrieval_target(
+                    full_context,
+                    task_graph_initialized=self.task_graph_initialized,
+                ),
+                "target_context": (
+                    full_context
+                    if index == 0
+                    else {
+                        "target": full_context["target"],
+                        "requirement_state": full_context.get("requirement_state"),
+                    }
+                ),
+            }
+            opportunities.append(item)
+        if targets["INSPECT"] != ["task"]:
+            opportunities.append(
+                {
+                    "action": "INSPECT",
+                    "target": targets["INSPECT"][0],
+                    "reason": "inspect provenance or competing evidence before choosing a branch",
+                }
+            )
+        opportunities.append(
+            {
+                "action": "ANSWER",
+                "target": "task",
+                "reason": "finish only when the graph-backed evidence is sufficient",
+            }
+        )
+        signals: dict[str, Any] = {}
+        if execution is not None:
+            calls = execution["block_calls"]
+            if not execution["success"]:
+                opportunities.insert(
+                    0,
+                    {
+                        "action": "PATCH",
+                        "target": targets["PATCH"][0],
+                        "reason": "the previous executable block failed",
+                    },
+                )
+            if targets["REUSE_REPLAY"] and (
+                calls["repeated_queries"] or calls["repeated_fetches"]
+            ):
+                opportunities.insert(
+                    1,
+                    {
+                        "action": "REUSE_REPLAY",
+                        "target": targets["REUSE_REPLAY"][0],
+                        "reason": "an equivalent dependency artifact is already materialized",
+                    },
+                )
+            signals = {
+                "last_block_success": execution["success"],
+                "repeated_queries": calls["repeated_queries"],
+                "zero_novelty_searches": calls["zero_novelty_searches"],
+                "new_docids": calls["new_docids"],
+                "new_fetches": calls["new_fetches"],
+                "failed_tool_calls": calls["failed_tool_calls"],
+            }
+        return {
+            "targets": targets,
+            "opportunities": opportunities,
+            "signals": signals,
+            "answer_context": self.answer_context(),
+        }
+
+    @staticmethod
+    def expected_delta_realized(
+        expected: Mapping[str, Any] | None,
+        before: Mapping[str, Any],
+        after: Mapping[str, Any],
+        *,
+        initialized: bool,
+    ) -> bool:
+        """Interpret a generic graph delta using retrieval-domain semantics."""
+        operation = str((expected or {}).get("operation", ""))
+        if initialized:
+            return True
+        if operation == "SEARCH_TARGET":
+            return int(after.get("queries", 0)) > int(before.get("queries", 0))
+        if operation == "FETCH_DOCUMENT":
+            return int(after.get("fetched_documents", 0)) > int(
+                before.get("fetched_documents", 0)
+            )
+        if operation in {"ADD_EVIDENCE", "VERIFY_CANDIDATE", "RESOLVE_CONFLICT"}:
+            return (
+                int(after.get("evidence", 0)) > int(before.get("evidence", 0))
+                or after.get("status") != before.get("status")
+            )
+        if operation == "REUSE_ARTIFACT":
+            return int(after.get("artifact_reuse_hits", 0)) > int(
+                before.get("artifact_reuse_hits", 0)
+            )
+        return any(
+            after.get(key) != before.get(key)
+            for key in (
+                "status",
+                "queries",
+                "retrieved_documents",
+                "fetched_documents",
+                "evidence",
+                "artifact_reuse_hits",
+            )
+        )
+
     def answer_context(self) -> dict[str, Any]:
         frontier = self.frontier()
         candidates = [
             {
                 "id": node_id,
+                "label": node["data"].get("label"),
                 **self._candidate_counts(node_id),
             }
             for node_id, node in self._nodes.items()
@@ -466,9 +653,61 @@ class ResearchGraphState:
         return {
             "candidates": candidates,
             "unresolved_constraints": [
-                {"id": item["id"], "status": item["status"]}
+                {
+                    "id": item["id"],
+                    "status": item["status"],
+                    "description": item["data"].get("description"),
+                }
                 for item in frontier["unresolved_constraints"]
             ],
+        }
+
+    def answer_review_context(self) -> dict[str, Any]:
+        """Return the compact verified subgraph used for conservative answer review."""
+        constraints = [
+            {
+                "id": node_id,
+                "description": node["data"].get("description"),
+                "status": self.requirement_state(node_id)["status"],
+            }
+            for node_id, node in self._nodes.items()
+            if node["kind"] == "CONSTRAINT"
+        ]
+        candidates = [
+            {
+                "id": node_id,
+                "label": node["data"].get("label"),
+                **self._candidate_counts(node_id),
+            }
+            for node_id, node in self._nodes.items()
+            if node["kind"] == "CANDIDATE"
+        ]
+        evidence = []
+        for node_id, node in self._nodes.items():
+            if node["kind"] != "EVIDENCE" or not node["data"].get("verified"):
+                continue
+            relations = [
+                {
+                    "relation": edge["type"],
+                    "target": edge["target"],
+                }
+                for edge in self._edges
+                if edge["source"] == node_id
+                and edge["type"] in {"supports", "refutes", "addresses"}
+            ]
+            evidence.append(
+                {
+                    "id": node_id,
+                    "docid": node["data"].get("docid"),
+                    "quote": node["data"].get("quote"),
+                    "relations": relations,
+                }
+            )
+        return {
+            "task": self._nodes["task"]["data"].get("question"),
+            "constraints": constraints[:12],
+            "candidates": candidates[:12],
+            "verified_evidence": evidence[-16:],
         }
 
     def requirement_state(self, node_id: str) -> dict[str, Any]:
@@ -589,6 +828,20 @@ class ResearchGraphState:
                 for evidence_id in dict.fromkeys(evidence_ids)
             ][: self._max_items],
         }
+        if target == "task":
+            result["child_requirements"] = [
+                {
+                    "id": edge["target"],
+                    "description": self._nodes[edge["target"]]["data"].get(
+                        "description"
+                    ),
+                    "status": self.requirement_state(edge["target"])["status"],
+                }
+                for edge in self._edges
+                if edge["type"] == "requires"
+                and edge["source"] == "task"
+                and self._nodes.get(edge["target"], {}).get("kind") == "CONSTRAINT"
+            ][: self._max_items]
         if self._nodes[target]["kind"] == "CONSTRAINT":
             result["requirement_state"] = self.requirement_state(target)
         return result
@@ -691,14 +944,7 @@ class ResearchGraphState:
         return {**self._compact_node(self._nodes[node_id]), **self._candidate_counts(node_id)}
 
     def _add_node(self, node_id: str, kind: str, data: Mapping[str, Any]) -> None:
-        existing = self._nodes.get(node_id)
-        if existing is None:
-            self._nodes[node_id] = {"id": node_id, "kind": kind, "data": dict(data)}
-            self._node_order.append(node_id)
-            return
-        if existing["kind"] != kind:
-            raise ValueError(f"graph node {node_id!r} already has another kind")
-        existing["data"].update({key: value for key, value in data.items() if value is not None})
+        self._episode_graph.add_node(node_id, kind, data)
 
     def _add_declared_node(
         self, node_id: str, kind: str, data: Mapping[str, Any]
@@ -714,9 +960,7 @@ class ResearchGraphState:
             raise ValueError(f"graph node {node_id!r} cannot be redefined")
 
     def _add_edge(self, edge_type: str, source: str, target: str) -> None:
-        edge = {"type": edge_type, "source": source, "target": target}
-        if edge not in self._edges:
-            self._edges.append(edge)
+        self._episode_graph.add_edge(edge_type, source, target)
 
     def _resolve_id(self, value: str, kinds: set[str] | None = None) -> str:
         key = str(value).strip()
@@ -747,6 +991,14 @@ class ResearchGraphState:
             data["quote"] = str(data.get("quote", ""))[:240]
         elif node["kind"] == "DOCUMENT":
             data["excerpt"] = str(data.get("excerpt", ""))[:240]
+        elif node["kind"] == "ARTIFACT":
+            data = {
+                key: data[key]
+                for key in ("operation", "query", "docid")
+                if key in data
+            }
+        elif node["kind"] == "TASK" and "question" in data:
+            data = {"question": data["question"]}
         return {
             "id": node["id"],
             "kind": node["kind"],
@@ -755,3 +1007,103 @@ class ResearchGraphState:
 
     def _count_interface(self, name: str) -> None:
         self._interface_calls[name] += 1
+
+
+def _diagnose_retrieval_target(
+    context: Mapping[str, Any],
+    *,
+    task_graph_initialized: bool,
+) -> dict[str, Any]:
+    state = context.get("requirement_state")
+    if not isinstance(state, Mapping):
+        if not task_graph_initialized:
+            return {
+                "diagnosis": "TASK_DECOMPOSITION_REQUIRED",
+                "reason": "decompose the task into stable, independently verifiable requirements",
+                "expected_graph_delta": {
+                    "operation": "INITIALIZE_TASK_GRAPH",
+                    "from": "TASK_ONLY",
+                    "to": "REQUIREMENTS_DECLARED",
+                },
+            }
+        if context.get("child_requirements"):
+            return {
+                "diagnosis": "COMPOSITE_GOAL_COVERAGE",
+                "reason": (
+                    "pursue one action that can identify a shared candidate or advance multiple "
+                    "ready child requirements"
+                ),
+                "expected_graph_delta": {"operation": "SEARCH_TARGET"},
+            }
+        return {
+            "diagnosis": "NO_RETRIEVAL_COVERAGE",
+            "reason": "extend the task-level research state",
+            "expected_graph_delta": {"operation": "SEARCH_TARGET"},
+        }
+
+    status = str(state.get("status", "UNEXPLORED"))
+    dependencies_ready = all(
+        value == "SATISFIED" for value in state.get("dependency_states", ())
+    )
+    if not dependencies_ready:
+        return {
+            "diagnosis": "DEPENDENCY_NOT_SATISFIED",
+            "reason": "resolve prerequisite requirements before advancing this target",
+            "expected_graph_delta": {"operation": "SATISFY_DEPENDENCY"},
+        }
+    if status == "UNEXPLORED":
+        return {
+            "diagnosis": "NO_RETRIEVAL_COVERAGE",
+            "reason": "search specifically for evidence that resolves this requirement",
+            "expected_graph_delta": {
+                "operation": "SEARCH_TARGET",
+                "from": "UNEXPLORED",
+                "to": "SEARCHED",
+            },
+        }
+    if status == "SEARCHED":
+        if context.get("unfetched_documents"):
+            document = context["unfetched_documents"][0]
+            docid = str((document.get("data") or {}).get("docid", ""))
+            return {
+                "diagnosis": "UNFETCHED_CANDIDATE_DOCUMENT",
+                "reason": "fetch a document already retrieved for this requirement",
+                "expected_graph_delta": {"operation": "FETCH_DOCUMENT"},
+                "suggested_operations": (
+                    [{"operation": "fetch", "docid": docid}] if docid else []
+                ),
+            }
+        return {
+            "diagnosis": "STALLED_RETRIEVAL_BRANCH",
+            "reason": "use the query lineage to pursue a distinct evidence path",
+            "expected_graph_delta": {"operation": "ADD_EVIDENCE"},
+        }
+    if status == "EVIDENCE_FOUND":
+        return {
+            "diagnosis": "UNSUPPORTED_CANDIDATE",
+            "reason": "connect verified evidence to a candidate or requirement",
+            "expected_graph_delta": {"operation": "VERIFY_CANDIDATE"},
+        }
+    if status == "CONFLICTED":
+        return {
+            "diagnosis": "CONFLICTING_EVIDENCE",
+            "reason": "inspect the competing evidence and distinguish the alternatives",
+            "expected_graph_delta": {"operation": "RESOLVE_CONFLICT"},
+        }
+    if status == "REFUTED":
+        return {
+            "diagnosis": "REFUTED_REQUIREMENT_PATH",
+            "reason": "change candidate or research branch using the refuting evidence",
+            "expected_graph_delta": {"operation": "ADD_EVIDENCE"},
+        }
+    return {
+        "diagnosis": "DEPENDENCY_NOT_SATISFIED",
+        "reason": "resolve remaining prerequisite coverage",
+        "expected_graph_delta": {"operation": "SATISFY_DEPENDENCY"},
+    }
+
+
+# Backward-compatible name for the retrieval projection used by the current
+# online controller. New domains should implement their own projection over
+# EpisodeGraph rather than extending retrieval-specific node semantics.
+ResearchGraphState = RetrievalGraphProjection

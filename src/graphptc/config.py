@@ -61,6 +61,7 @@ class RuntimeConfig:
     reuse_exact_results: bool = False
     graph_progress_mode: str = "off"
     graph_adaptation_mode: str = "off"
+    graph_answer_review: bool = False
 
 
 @dataclass(frozen=True)
