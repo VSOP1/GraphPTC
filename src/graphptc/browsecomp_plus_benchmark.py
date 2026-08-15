@@ -44,7 +44,9 @@ from .graph_agent import (
     append_graph_runtime_contract,
     extend_ptc_spec_with_graph_control,
 )
+from .goal_adaptation import GoalGraphAdaptation
 from .online_adaptation import OnlineGraphAdaptation
+from .tool_effects import ToolEffectContract
 from .model import OpenAIChatModel
 from .observability import ExecutionObserver
 from .ptc import ModelRequestTrace, extract_result_tag
@@ -568,15 +570,36 @@ def run_browsecomp_plus_benchmark(
                 if progress_mode != "off"
                 else None
             )
-            graph_adaptation = (
-                OnlineGraphAdaptation(
+            if adaptation_mode == "online":
+                graph_adaptation = OnlineGraphAdaptation(
                     tools,
                     max_tool_calls=config.browsecomp_plus.max_tool_calls,
                     task=example.question,
                 )
-                if adaptation_mode == "online"
-                else None
-            )
+            elif adaptation_mode == "generic":
+                graph_adaptation = GoalGraphAdaptation(
+                    {"search": tools.search, "fetch": tools.fetch},
+                    {
+                        "search": ToolEffectContract(
+                            name="search",
+                            effect="read",
+                            deterministic=True,
+                            cacheable=True,
+                            artifact_kind="search_result",
+                        ),
+                        "fetch": ToolEffectContract(
+                            name="fetch",
+                            effect="read",
+                            deterministic=True,
+                            cacheable=True,
+                            artifact_kind="fetched_resource",
+                        ),
+                    },
+                    task=example.question,
+                    expose_graph_api=False,
+                )
+            else:
+                graph_adaptation = None
             graph_hooks = (
                 GraphAgentHooks.from_controller(graph_adaptation)
                 if graph_adaptation is not None
@@ -1055,10 +1078,23 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         raise ValueError(
             f"Unknown BrowseComp-Plus prompt variant {variant!r}; supported: {supported}"
         ) from exc
-    if config.runtime.graph_adaptation_mode != "online":
+    adaptation_mode = config.runtime.graph_adaptation_mode
+    if adaptation_mode not in {"online", "generic"}:
         return system_prompt, user_prompt
-    if variant == "fewshot-ptc-graph-v2":
+    if adaptation_mode == "generic":
+        graph_guidance = (
+            "GRAPH_ASSESSMENT and GRAPH_DELTA expose a compact, domain-neutral effect frontier. "
+            "The runtime automatically records actions, artifacts, state dependencies, failures, "
+            "and whether recent actions produced new or equivalent results; it never chooses a tool "
+            "or its arguments. Describe the action actually taken and its expected observable change. "
+            "If REPLAN is offered, preserve productive paths, avoid exhausted ones, and change the "
+            "dependency path. If PATCH is offered, correct and re-execute the failed operation. "
+            "Answer directly when the available results satisfy the task."
+        )
+        return system_prompt + "\n\n" + graph_guidance, user_prompt
+    elif variant == "fewshot-ptc-graph-v2":
         graph_guidance = GRAPH_ADAPTATION_V2_GUIDANCE
+        graph_manifest = GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
     else:
         graph_guidance = (
             "GRAPH_ASSESSMENT and each GRAPH_DELTA expose graph-grounded action opportunities for "
@@ -1087,10 +1123,11 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
             + " When the first opportunity is REPLAN because recent actions reproduced equivalent "
             + "artifacts, change the approach or dependency path before issuing more tool calls."
         )
+        graph_manifest = GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
     return (
         append_graph_runtime_contract(
             system_prompt,
-            manifest=GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST,
+            manifest=graph_manifest,
             guidance=graph_guidance,
         ),
         user_prompt,
@@ -1101,6 +1138,18 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
     _validate_control_modes(config)
     if config.browsecomp_plus.prompt_variant == "direct-tools-v1":
         return None
+    if config.runtime.graph_adaptation_mode == "generic":
+        spec = copy.deepcopy(BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC)
+        spec["function"]["parameters"]["properties"]["code"]["description"] += (
+            " Graph dependency tracking and exact deterministic tool reuse are automatic."
+        )
+        return extend_ptc_spec_with_graph_control(
+            spec,
+            include_target=False,
+            include_input_artifacts=False,
+            action_description="The graph-control intent implemented by this PTC block.",
+            expected_change_description="The new artifact, state effect, or goal change expected from this block.",
+        )
     if config.runtime.graph_adaptation_mode == "online":
         spec = copy.deepcopy(BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC)
         spec["function"]["parameters"]["properties"]["code"]["description"] += (
@@ -1235,6 +1284,8 @@ def _runtime_tool_manifest(
     _validate_control_modes(config)
     if config.browsecomp_plus.prompt_variant == "direct-tools-v1":
         return ()
+    if config.runtime.graph_adaptation_mode == "generic":
+        return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
     if config.runtime.graph_adaptation_mode == "online":
         return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST + GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
     if config.runtime.graph_progress_mode in {"off", "placebo_auto", "graph_auto"}:
@@ -1258,17 +1309,19 @@ def _runtime_tool_manifest(
 
 def _validate_control_modes(config: ExperimentConfig) -> None:
     adaptation_mode = config.runtime.graph_adaptation_mode
-    if adaptation_mode not in {"off", "online"}:
-        raise ValueError("runtime.graph_adaptation_mode must be one of off, online")
-    if adaptation_mode == "online" and config.runtime.graph_progress_mode != "off":
+    if adaptation_mode not in {"off", "online", "generic"}:
+        raise ValueError("runtime.graph_adaptation_mode must be one of off, online, generic")
+    if adaptation_mode in {"online", "generic"} and config.runtime.graph_progress_mode != "off":
         raise ValueError(
-            "runtime.graph_adaptation_mode=online requires graph_progress_mode=off"
+            "graph adaptation requires graph_progress_mode=off"
         )
     if (
-        adaptation_mode == "online"
+        adaptation_mode in {"online", "generic"}
         and config.browsecomp_plus.prompt_variant == "direct-tools-v1"
     ):
-        raise ValueError("online graph adaptation currently requires a PTC prompt variant")
+        raise ValueError("graph adaptation currently requires a PTC prompt variant")
+    if adaptation_mode == "generic" and config.runtime.graph_answer_review:
+        raise ValueError("generic graph adaptation does not use a separate answer reviewer")
 
 
 def _demonstration_messages(
@@ -1280,6 +1333,22 @@ def _demonstration_messages(
             return PTC_FEW_SHOT_MESSAGES
         return _graph_v2_demonstration_messages()
     if variant == "fewshot-ptc-v1":
+        if config.runtime.graph_adaptation_mode == "generic":
+            messages = copy.deepcopy(PTC_FEW_SHOT_MESSAGES)
+            for message in messages:
+                for call in message.get("tool_calls", ()):
+                    function = call.get("function", {})
+                    if function.get("name") != "programmatic_tool_call":
+                        continue
+                    arguments = json.loads(function["arguments"])
+                    arguments.update(
+                        {
+                            "action": "CONTINUE",
+                            "expected_change": "produce new task-relevant artifacts",
+                        }
+                    )
+                    function["arguments"] = json.dumps(arguments)
+            return tuple(messages)
         if config.runtime.graph_adaptation_mode != "online":
             return PTC_FEW_SHOT_MESSAGES
         messages = copy.deepcopy(PTC_FEW_SHOT_MESSAGES)
@@ -1750,6 +1819,7 @@ def _implementation_sha256() -> str:
         "episode_graph.py",
         "execution_projection.py",
         "graph_agent.py",
+        "goal_adaptation.py",
         "tool_effects.py",
         "online_adaptation.py",
         "research_graph.py",

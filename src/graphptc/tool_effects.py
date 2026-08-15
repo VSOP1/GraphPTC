@@ -110,7 +110,8 @@ class ToolGraphRuntime:
         inferred_inputs = {
             self._artifact_by_value[key]
             for value in arguments.values()
-            if (key := _canonical_value(value)) in self._artifact_by_value
+            for key in _value_keys(value)
+            if key in self._artifact_by_value
         }
         for artifact_id in dict.fromkeys((*consumes, *inferred_inputs)):
             if artifact_id in self.graph.nodes:
@@ -162,9 +163,10 @@ class ToolGraphRuntime:
             equivalent_artifact = self._artifact_by_value.get(value_key)
             if equivalent_artifact is None:
                 novel = True
-                self._artifact_by_value[value_key] = artifact_id
             else:
                 self.graph.add_edge("equivalent_to", equivalent_artifact, artifact_id)
+            for key in _value_keys(value):
+                self._artifact_by_value[key] = artifact_id
             if contract.cacheable:
                 self._cache[(tool_name, cache_key)] = artifact_id
         elif success and artifact_id is not None:
@@ -216,3 +218,22 @@ def _canonical_arguments(arguments: Mapping[str, Any]) -> str:
 
 def _canonical_value(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=repr)
+
+
+def _value_keys(value: Any, *, depth: int = 0) -> set[str]:
+    keys = {_canonical_value(value)}
+    if depth >= 4:
+        return keys
+    if isinstance(value, Mapping):
+        for child in value.values():
+            keys.update(_value_keys(child, depth=depth + 1))
+    elif isinstance(value, (list, tuple)):
+        for child in value:
+            keys.update(_value_keys(child, depth=depth + 1))
+    if value is None or isinstance(value, bool):
+        keys.discard(_canonical_value(value))
+    elif isinstance(value, (int, float)) and depth > 0:
+        keys.discard(_canonical_value(value))
+    elif isinstance(value, str) and depth > 0 and len(value.strip()) < 2:
+        keys.discard(_canonical_value(value))
+    return keys

@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping
 
 from .episode_graph import EpisodeGraph
 from .execution_projection import PTCExecutionProjection
+from .graph_agent import GraphProgressTracker
 from .tool_effects import ToolEffectContract, ToolGraphRuntime
 
 
@@ -20,11 +21,14 @@ class GoalGraphAdaptation:
         *,
         task: str,
         max_observation_chars: int = 3_200,
+        expose_graph_api: bool = True,
     ) -> None:
         self._graph = EpisodeGraph(task=task)
         self._runtime = ToolGraphRuntime(self._graph)
         self._execution = PTCExecutionProjection(self._graph)
+        self._progress = GraphProgressTracker(self._graph)
         self._max_observation_chars = max_observation_chars
+        self._expose_graph_api = expose_graph_api
         self._tool_functions: list[Callable[..., Any]] = []
         for name, function in tools.items():
             contract = contracts[name]
@@ -40,8 +44,15 @@ class GoalGraphAdaptation:
         self._declared_inputs: tuple[str, ...] = ()
         self._inspection_count = 0
         self._artifact_loads = 0
+        self._observation_calls = 0
+        self._action_history: list[dict[str, Any]] = []
+        self._invalid_action_targets = 0
+        self._realized_actions = 0
+        self._missed_actions = 0
 
     def runtime_functions(self) -> tuple[Callable[..., Any], ...]:
+        if not self._expose_graph_api:
+            return tuple(self._tool_functions)
         return (
             *self._tool_functions,
             self.graph_declare_goal,
@@ -126,11 +137,8 @@ class GoalGraphAdaptation:
     def graph_load_artifact(self, *, artifact_id: str) -> Any:
         self._artifact_loads += 1
         value = self._graph.load_artifact(artifact_id)
-        reuse_id = f"reuse:{self._artifact_loads}"
-        self._graph.add_node(reuse_id, "REUSE", {"artifact_id": artifact_id})
-        self._graph.add_edge("reuses", artifact_id, reuse_id)
-        if self._current_target in self._graph.nodes:
-            self._graph.add_edge("contributes_to", reuse_id, self._current_target)
+        if self._current_action is not None:
+            self._graph.add_edge("consumes", artifact_id, self._current_action["id"])
         return value
 
     def initial_observation(self) -> str:
@@ -138,9 +146,11 @@ class GoalGraphAdaptation:
 
     def prepare_program_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         action = str(payload.get("action", "CONTINUE")).upper()
-        target = str(payload.get("target", "task"))
-        if target not in self._graph.nodes:
-            target = "task"
+        requested_target = str(payload.get("target", "task"))
+        target_valid = requested_target in self._graph.nodes
+        target = requested_target if target_valid else "task"
+        if not target_valid:
+            self._invalid_action_targets += 1
         inputs = tuple(
             str(value)
             for value in payload.get("input_artifacts", ())
@@ -165,42 +175,95 @@ class GoalGraphAdaptation:
             "id": intent_id,
             "action": action,
             "target": target,
+            "requested_target": requested_target,
+            "target_valid": target_valid,
+            "expected_change": str(payload.get("expected_change", ""))[:500],
             "before": self._snapshot(target),
             "inspection_count": self._inspection_count,
             "artifact_loads": self._artifact_loads,
         }
+        self._action_history.append(self._current_action)
         return dict(payload)
 
     def observe(self, trace: Any) -> str:
+        self._observation_calls += 1
         block_id = self._execution.observe(trace)
         if self._current_action is not None:
             self._graph.add_edge("implemented_by", self._current_action["id"], block_id)
-        verification = self._verify_current_action(trace)
-        delta = self._graph.delta()
+        effect = self._progress.observe(
+            block_id,
+            target=(self._current_action or {}).get("target", "task"),
+        )
+        failure = self._failure_view(trace, block_id)
+        verification = self._verify_current_action(trace, effect)
+        if self._current_action is not None:
+            self._current_action["realized"] = bool(verification["realized"])
+            self._current_action["effect"] = {
+                key: effect.get(key)
+                for key in (
+                    "progressed",
+                    "novel_artifacts",
+                    "equivalent_artifacts",
+                    "state_changes",
+                    "stagnant_streak",
+                )
+            }
+        if verification["realized"]:
+            self._realized_actions += 1
+        else:
+            self._missed_actions += 1
         payload = {
             "schema_version": 1,
             "control_contract": "generic-goal-graph-v1",
+            "block": self._observation_calls,
+            "declared_action": _visible_action(self._current_action),
             "action_verification": verification,
-            "graph_delta": {
-                "new_nodes": list(delta.nodes),
-                "new_edges": list(delta.edges),
-            },
-            "next_action_contract": self._control_view(),
+            "actual_effect": effect,
+            "next_action_contract": self._control_view(effect, failure=failure),
         }
         return self._render("GRAPH_DELTA ", payload)
 
     def finish(self, *, answered: bool) -> None:
-        if answered:
-            self._graph.nodes["task"]["data"]["status"] = "COMPLETE"
+        if not answered:
+            return
+        self._graph.nodes["task"]["data"]["status"] = "COMPLETE"
+        self._actions["ANSWER"] += 1
+        answer_id = f"intent:{sum(self._actions.values())}"
+        self._graph.add_node(answer_id, "ACTION_INTENT", {"action": "ANSWER"})
+        self._graph.add_edge("targets", answer_id, "task")
 
     def telemetry(self) -> dict[str, Any]:
+        graph = self._graph.telemetry()
+        graph.update(
+            {
+                "artifact_reuse_hits": self._runtime.reuse_hits + self._artifact_loads,
+                "interface_calls": {
+                    "graph_declare_goal": len(self._goals),
+                    "graph_load_artifact": self._artifact_loads,
+                },
+                "requirement_states": dict(
+                    Counter(self._goal_status(value) for value in self._goals)
+                ),
+                "task_graph_initialized": bool(self._goals),
+            }
+        )
         return {
             "mode": "generic_online",
+            "control_contract": "generic-goal-graph-v1",
+            "observation_calls": self._observation_calls,
             "action_distribution": dict(self._actions),
+            "action_history": [dict(value) for value in self._action_history],
             "goal_states": dict(Counter(self._goal_status(value) for value in self._goals)),
             "tool_reuse_hits": self._runtime.reuse_hits,
             "artifact_loads": self._artifact_loads,
-            "graph": self._graph.telemetry(),
+            "invalid_action_targets": self._invalid_action_targets,
+            "realized_graph_deltas": self._realized_actions,
+            "missed_graph_deltas": self._missed_actions,
+            "aligned_actions": self._realized_actions,
+            "misaligned_actions": self._missed_actions,
+            "policy_overrides": 0,
+            "program_overrides": 0,
+            "research_graph": graph,
         }
 
     def _tool_wrapper(
@@ -239,64 +302,138 @@ class GoalGraphAdaptation:
                 ready.append(item)
             else:
                 blocked.append(item)
+        consumed = {
+            edge["source"]
+            for edge in self._graph.edges
+            if edge["type"] in {"consumes", "reuses", "satisfies"}
+            and edge["source"] in self._graph.artifacts
+        }
         return {
             "ready_goals": ready,
             "blocked_goals": blocked,
             "complete_goals": [
                 value for value in self._goals if self._goal_status(value) == "COMPLETE"
             ],
-            "reusable_artifacts": list(self._graph.artifacts)[-8:],
+            "reusable_artifacts": [
+                artifact_id
+                for artifact_id in self._graph.artifacts
+                if artifact_id not in consumed
+            ][-4:]
+            if self._expose_graph_api
+            else [],
         }
 
-    def _control_view(self) -> dict[str, Any]:
+    def _control_view(
+        self,
+        effect: Mapping[str, Any] | None = None,
+        *,
+        failure: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         frontier = self._frontier()
         ready = [item["id"] for item in frontier["ready_goals"]]
-        if not self._goals:
-            opportunities = [
+        active_target = str((effect or {}).get("target") or self._current_target or "task")
+        opportunities = [
+            {
+                "action": "CONTINUE",
+                "target": target,
+                "reason": (
+                    "continue the task using a new dependency effect"
+                    if target == "task"
+                    else "all declared dependencies for this goal are complete"
+                ),
+            }
+            for target in ("task", *ready)
+        ]
+        if failure:
+            opportunities.insert(
+                0,
                 {
-                    "action": "CONTINUE",
-                    "target": "task",
-                    "reason": "declare stable goals and execute the first required step",
-                }
-            ]
-        elif ready:
-            opportunities = [
-                {
-                    "action": "CONTINUE",
-                    "target": goal_id,
-                    "reason": "all declared dependencies are complete",
-                }
-                for goal_id in ready
-            ]
-        else:
-            opportunities = []
-        if frontier["reusable_artifacts"]:
-            opportunities.append(
-                {
-                    "action": "REUSE_REPLAY",
-                    "target": frontier["reusable_artifacts"][-1],
-                    "reason": "a prior artifact can be loaded without repeating its tool action",
-                }
+                    "action": "PATCH",
+                    "target": active_target,
+                    "reason": "correct the failed program or dependency assumption, then re-execute it",
+                },
             )
-        if any(self._goal_status(value) != "COMPLETE" for value in self._goals):
+        if int((effect or {}).get("stagnant_streak", 0)) >= 2:
+            opportunities.insert(
+                1 if failure else 0,
+                {
+                    "action": "REPLAN",
+                    "target": active_target,
+                    "reason": "recent actions only reproduced existing effects; choose a dependency path not listed as exhausted",
+                },
+            )
+        if self._goals or self._graph.artifacts:
             opportunities.append(
                 {
                     "action": "INSPECT",
                     "target": ready[0] if ready else "task",
-                    "reason": "inspect dependencies or prior artifacts before selecting work",
+                    "reason": "inspect the current dependency frontier or a prior artifact",
                 }
             )
-        if self._goals and all(self._goal_status(value) == "COMPLETE" for value in self._goals):
-            opportunities.append(
-                {"action": "ANSWER", "target": "task", "reason": "all goals are complete"}
-            )
+        opportunities.append(
+            {
+                "action": "ANSWER",
+                "target": "task",
+                "reason": "finish only when the available artifacts satisfy the task",
+            }
+        )
         return {
             "available_actions": list(dict.fromkeys(item["action"] for item in opportunities)),
             "action_opportunities": opportunities,
             "frontier": frontier,
+            "last_effect": dict(effect or {}),
+            "last_failure": dict(failure or {}),
+            "branch_frontier": self._branch_frontier(active_target, effect),
         }
 
-    def _verify_current_action(self, trace: Any) -> dict[str, Any]:
+    def _failure_view(self, trace: Any, block_id: str) -> dict[str, Any] | None:
+        if bool(getattr(trace, "success", False)):
+            return None
+        return {
+            "id": f"failure:{block_id}",
+            "target": (self._current_action or {}).get("target", "task"),
+            "failed_action": (self._current_action or {}).get("action"),
+            "error_type": getattr(trace, "error_type", None),
+            "error_message": str(getattr(trace, "error_message", ""))[:500],
+        }
+
+    def _branch_frontier(
+        self,
+        target: str,
+        effect: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        if int((effect or {}).get("stagnant_streak", 0)) < 1:
+            return {}
+        productive: list[dict[str, str]] = []
+        exhausted: list[dict[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for action in reversed(self._action_history):
+            if action.get("target") != target or "realized" not in action:
+                continue
+            expected = str(action.get("expected_change", "")).strip()
+            if not expected:
+                continue
+            outcome = "productive" if action.get("realized") else "exhausted"
+            key = (expected.casefold(), outcome)
+            if key in seen:
+                continue
+            seen.add(key)
+            item = {"expected_change": expected, "outcome": outcome}
+            (productive if outcome == "productive" else exhausted).append(item)
+            if len(productive) >= 3 and len(exhausted) >= 3:
+                break
+        return {
+            "target": target,
+            "productive_paths": list(reversed(productive[:3])),
+            "exhausted_paths": list(reversed(exhausted[:3])),
+            "shared_artifacts": self._frontier()["reusable_artifacts"],
+        }
+
+    def _verify_current_action(
+        self,
+        trace: Any,
+        effect: Mapping[str, Any],
+    ) -> dict[str, Any]:
         action = self._current_action
         if action is None:
             return {"realized": False, "reason": "no declared action"}
@@ -309,9 +446,9 @@ class GoalGraphAdaptation:
         elif selected == "REUSE_REPLAY":
             realized = self._artifact_loads > action["artifact_loads"]
         else:
-            realized = any(
+            realized = bool(effect.get("progressed")) or any(
                 after[key] > action["before"][key]
-                for key in ("artifacts", "state_versions", "complete_goals")
+                for key in ("complete_goals",)
             )
         return {
             "action": selected,
@@ -358,15 +495,17 @@ class GoalGraphAdaptation:
         if len(rendered) <= self._max_observation_chars:
             return rendered
         compact = dict(payload)
-        if "graph_delta" in compact:
-            compact["graph_delta"] = {
-                "new_nodes": compact["graph_delta"]["new_nodes"][-4:],
-                "new_edges": compact["graph_delta"]["new_edges"][-6:],
-            }
+        contract = compact.get("next_action_contract")
+        if isinstance(contract, dict):
+            contract = dict(contract)
+            contract["action_opportunities"] = contract.get("action_opportunities", [])[:4]
+            frontier = dict(contract.get("frontier") or {})
+            for key in frontier:
+                if isinstance(frontier[key], list):
+                    frontier[key] = frontier[key][-4:]
+            contract["frontier"] = frontier
+            compact["next_action_contract"] = contract
         rendered = prefix + json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
-        if len(rendered) > self._max_observation_chars:
-            compact.pop("graph_delta", None)
-            rendered = prefix + json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
         return rendered[: self._max_observation_chars]
 
 
@@ -375,4 +514,13 @@ def _goal_id(value: str) -> str:
     if not key:
         raise ValueError("goal id must not be empty")
     return key if key.startswith("goal:") else f"goal:{key}"
+
+
+def _visible_action(value: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    return {
+        key: value.get(key)
+        for key in ("action", "target", "requested_target", "target_valid")
+    }
 

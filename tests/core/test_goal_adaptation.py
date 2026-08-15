@@ -8,7 +8,12 @@ from graphptc.graph_agent import GraphAgentHooks
 from graphptc.tool_effects import ToolEffectContract
 
 
-def _trace(*, success: bool = True) -> SimpleNamespace:
+def _trace(
+    *,
+    success: bool = True,
+    error_type: str | None = None,
+    error_message: str | None = None,
+) -> SimpleNamespace:
     return SimpleNamespace(
         success=success,
         code="pass",
@@ -16,8 +21,8 @@ def _trace(*, success: bool = True) -> SimpleNamespace:
         runtime_calls=0,
         program_analysis={},
         runtime_trace={},
-        error_type=None,
-        error_message=None,
+        error_type=error_type,
+        error_message=error_message,
     )
 
 
@@ -71,3 +76,67 @@ def test_goal_graph_controller_runs_a_non_retrieval_dependency_workflow() -> Non
     assert payload["action_verification"]["realized"] is True
     assert payload["next_action_contract"]["available_actions"][-1] == "ANSWER"
     assert controller.telemetry()["goal_states"] == {"COMPLETE": 1}
+
+
+def test_generic_controller_exposes_branch_frontier_after_equivalent_effects() -> None:
+    controller = GoalGraphAdaptation(
+        {"read_value": lambda *, key: {"key": key, "value": "same"}},
+        {"read_value": ToolEffectContract(name="read_value")},
+        task="Find a value",
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    read_value = {
+        function.__name__: function for function in hooks.runtime_functions
+    }["read_value"]
+
+    observation = ""
+    for index in range(3):
+        hooks.ptc_call_metadata_callback(
+            {
+                "action": "CONTINUE" if index < 2 else "REPLAN",
+                "target": "task",
+                "expected_change": f"path {index}",
+            }
+        )
+        read_value(key="x")
+        observation = hooks.block_observation_factory(_trace())
+
+    payload = json.loads(observation.removeprefix("GRAPH_DELTA "))
+    contract = payload["next_action_contract"]
+    assert contract["action_opportunities"][0]["action"] == "REPLAN"
+    assert contract["branch_frontier"]["productive_paths"]
+    assert contract["branch_frontier"]["exhausted_paths"]
+
+
+def test_generic_controller_routes_execution_failure_to_patch() -> None:
+    controller = GoalGraphAdaptation({}, {}, task="Compute a value")
+    hooks = GraphAgentHooks.from_controller(controller)
+
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "CONTINUE",
+            "target": "task",
+            "expected_change": "compute the value",
+        }
+    )
+    failed = hooks.block_observation_factory(
+        _trace(success=False, error_type="NameError", error_message="missing name")
+    )
+    failure_contract = json.loads(failed.removeprefix("GRAPH_DELTA "))[
+        "next_action_contract"
+    ]
+
+    assert failure_contract["action_opportunities"][0]["action"] == "PATCH"
+    assert failure_contract["last_failure"]["error_type"] == "NameError"
+
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "PATCH",
+            "target": "task",
+            "expected_change": "re-execute the corrected computation",
+        }
+    )
+    repaired = json.loads(
+        hooks.block_observation_factory(_trace()).removeprefix("GRAPH_DELTA ")
+    )
+    assert repaired["action_verification"]["realized"] is True

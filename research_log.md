@@ -173,3 +173,80 @@
 - 失败归类：62个错误中，按同一qrels交集口径有46个candidate retrieval miss、5个candidate命中但未fetch evidence、11个已fetch evidence后答案错误。主要瓶颈仍是候选发现，其次是证据后的语义判断。
 - 同一pilot100数据快照的当前报告：v12.1为35%，v0.5为38%，v11原始在线图版本的现存重评分报告为42%。因此v0.5相对v12.1提升3个百分点，但没有超过v11，不能宣称pilot100端到端SOTA。历史日志中v11的39%与当前report.json的42%不一致，本结论以当前100/100有效、同dataset hash的报告为准。
 - 最终结论：本轮完成了从retrieval-specific sidecar到通用EpisodeGraph、ToolEffectContract、共享execution projection和effect-novelty REPLAN的架构迁移；非检索工具工作流已验证可复用同一core。有效收益来自“图识别重复effect并要求Agent重规划”，而不是更多图展示。失败的自动target轮换、context裁剪、显式plan schema和final review均保持非默认，不能作为性能贡献。
+
+## Generic Graph Core v2：Minimal Frontier
+
+- 目的：把通用架构收敛为 `Goal / Action / Artifact / Effect` 闭环。BrowseComp-Plus 仅作为 search/fetch 工具 adapter；核心不再要求 constraint/query/document/evidence/candidate 字段，也不再把完整 execution nodes 暴露给模型。模型仍使用冻结的 `fewshot-ptc-v1`，仅增加 action、target、expected change 和可选 input artifacts。
+- 实现：复用 `EpisodeGraph`、`ToolEffectContract/ToolGraphRuntime`、`PTCExecutionProjection`、`GraphProgressTracker` 和 `GraphAgentHooks`。模型只看到 ready/blocked goals、未消费 artifact 引用和本轮新/等价 effect；目标声明为可选，Runtime 不选择工具、参数或检索目标。
+- 固定20题：20/20生成和评分有效，7/20（35%）；candidate retrieval recall 40.58%，fetched-evidence recall 24.42%。493个blocks、1446次search、205次fetch、659次精确重复query；52次REPLAN，316/177次effect实现/未实现。正确题为896、772、1234、653、380、991、266，相比v0.5仅丢失qid 181。
+- 结论：极简核心在显著减少图规模和模型上下文的同时基本保持结果（最大输入由v0.5约81k降到61k token），证明retrieval-specific research graph不是在线控制的必要前提；但52次REPLAN仍未改善候选发现，13个错误按qrels交集口径均为retrieval miss。保留v2作为新通用主线，不以7/20宣称性能提升。
+
+## Generic Graph Core v2.1：Branch Frontier（执行中）
+
+- 假设：REPLAN缺少“哪些依赖路径曾产生新effect、哪些只复现旧effect”的最小记忆。复用已有expected_change，不新增plan schema或BRANCH节点；从Action→Effect历史派生productive/exhausted paths和共享artifact，交由Agent选择替代路径。
+- 边界：不做语义相似度、自动分支排序、查询改写或目标切换；branch frontier只是EpisodeGraph的紧凑投影。
+- 固定20题：20/20有效，7/20（35%）；candidate retrieval recall 45.92%，fetched-evidence recall 30.88%。437个blocks、1561次search、262次fetch、583次精确重复query；25次REPLAN，314/123次effect实现/未实现。正确题为896、772、1234、653、380、160、181。
+- 结论：相对v2，REPLAN和重复query减少，候选/证据覆盖提高，并新增qid 160、181，但丢失qid 266、991，最终正确率未超过7/20。保留branch frontier，因为它复用现有expected_change且改善通用路径反馈；不继续增加branch字段或语义评分。
+
+## Generic Graph Core v2.2：Dependency Reuse（执行中）
+
+- 假设：冻结环境中的search和fetch都是确定性只读工具。直接使用已有 `ToolEffectContract` cache语义复用相同工具+参数的artifact，可让精确重复调用不再伪装成新执行，并让effect/branch闭环更快要求新依赖路径。
+- 边界：这是由tool adapter声明的通用执行属性；core不知道search、query或docid，不增加重复次数阈值和检索规则。
+- 固定20题：20/20有效，7/20（35%）；candidate retrieval recall 45.99%，fetched-evidence recall 29.19%。488个blocks，但实际search从v2.1的1561降至935，精确重复query从583降至0；172次fetch，1267次artifact reuse。正确题为772、1234、653、380、991、181、1204。
+- 结论：准确率仍为7/20，但确定性依赖复用在不改变工具结果的情况下消除了全部外部精确重复search，并新增qid 1204；候选覆盖基本保持。保留为通用主线能力。当前branch frontier只总结model-authored expected_change，下一轮改为直接投影EpisodeGraph中实际Tool Action→Effect路径，不引入新节点或语义规则。
+
+## Generic Graph Core v2.3：Actual Tool Paths（执行中）
+
+- 假设：实际工具名、参数及其novel/equivalent/reused effect比自由文本expected_change更能描述已尝试的依赖路径。由现有TOOL_ACTION、produces、equivalent_to和reuses边派生productive/exhausted paths，仍由Agent决定下一路径。
+- 固定20题：20/20有效，6/20（30%）；candidate retrieval recall 45.96%，fetched-evidence recall 31.33%。
+- 结论：不保留。实际tool arguments增加了模型可见细节但没有提高候选覆盖，正确率反而下降。撤回该投影，停止继续扩展branch capsule；主线恢复v2.2的expected-change branch和确定性依赖复用。
+
+## Generic Graph Core v2.4：Causal Working Memory（执行中）
+
+- 假设：工作记忆必须建立在真实artifact consumption上，而不是按时间或检索计数裁剪。ToolGraphRuntime从任意工具结果的嵌套值推断后续参数依赖；PTCExecutionProjection把block内tool artifact与持久Python state连接。只有一个旧block的tool artifacts都已被后续action/state消费时，才把其stdout替换为可恢复GRAPH_MEMORY_REF。
+- 边界：完整artifact和图不删除；最近8个block、未消费artifact相关block及没有闭合依赖的block始终保留。该机制不识别query/document/evidence，也不根据token阈值或benchmark规则裁剪。
+- 固定20题：20/20有效，7/20（35%）；candidate retrieval recall 38.65%，fetched-evidence recall 28.97%。448个blocks、695次实际search、246次fetch；最大上下文229853字符、最大输入65890 token，均未低于v2.2的218811字符和62229 token。
+- 结论：嵌套artifact依赖和artifact→Python state派生边保留为通用provenance能力；自动工作记忆投影不保留在默认Controller中。它没有减少本轮最大上下文，也降低了候选覆盖，继续调裁剪阈值会偏离简洁主线。
+
+## Generic Graph Core v2.5：Unified Failure Recovery（执行中）
+
+- 假设：failure不需要独立repair controller。执行投影已生成FAILURE节点，通用Controller只需把最近失败作为active frontier的PATCH机会；Agent在下一PTC block修正代码或依赖假设并重执行，Runtime验证PATCH是否成功。
+- 边界：不自动改代码、不触发额外模型、不针对异常类型写规则，也不恢复旧的retrieval-specific repair/replay管线。failure、action、effect仍在同一EpisodeGraph和同一控制闭环中。
+- 固定20题：20/20有效，6/20（30%）；candidate retrieval recall 39.94%，fetched-evidence recall 32.75%。483个blocks中有23个执行失败，但action分布为468 CONTINUE、15 REPLAN、0 PATCH；正确题为1234、653、380、315、181、266。
+- 结论：保留FAILURE→PATCH作为通用Controller的最小恢复能力，但本轮模型没有采用PATCH，不能归因出在线修复收益，也不围绕异常类型增加规则。该版本不作为候选最优版。
+
+## Generic Graph Core v2.6：Implicit Graph Core（执行中）
+
+- 假设：BrowseComp任务中模型从未调用手工goal/artifact API，target也始终为task。让Runtime自动维护依赖图，模型只声明action和expected_change，可以减少无效图操作面，同时保留effect验证、branch frontier、确定性复用和failure recovery。
+- 边界：完整GoalGraphAdaptation API仍可由需要显式子目标的其他tool domain启用；BrowseComp adapter仅暴露search/fetch。核心不新增节点或字段，反而从该adapter的prompt、manifest和PTC schema移除未使用接口。
+- 固定20题：20/20有效，7/20（35%）；candidate retrieval recall 41.46%，fetched-evidence recall 34.02%。483个blocks、870次实际search、159次fetch；最大上下文212569字符、最大输入57778 token。正确题为772、1234、653、380、991、181、266。
+- 机制：10个执行失败后模型选择9次PATCH，9次均由下一block成功执行验证；这是统一FAILURE→PATCH首次在通用Controller中形成真实在线闭环。精简接口同时把最大输入降到所有v2.x版本最低。
+- 结论：保留Implicit Graph Core为默认主线。它恢复到7/20但仍未追平8/20；13个错误中多数仍没有命中gold candidate，且结构性artifact novelty会把“新但无关”的结果误判为progress。下一轮不增加检索规则，而是让Agent的REPLAN选择成为对上一effect的通用语义反馈。
+
+## Generic Graph Core v2.7：Agent-Semantic Effect Feedback（执行中）
+
+- 假设：Runtime能判定artifact是否新颖，却不能判定其是否回答了语义目标；Agent恰好具备该判断。每轮都允许Agent在结果语义不足时选择REPLAN；该选择把上一expected-change path标为agent-rejected，branch frontier随后把它作为exhausted path保留。
+- 边界：不新增PTC字段、模型调用、query规则或语义评分器；结构性effect统计保持独立，Agent只提供一个已有动作所携带的语义反馈，Runtime负责持久化和投影。
+- 固定20题：20/20有效，5/20（25%）；candidate retrieval recall 36.99%，fetched-evidence recall 31.61%。REPLAN增至57次、实际search降至731次，但正确率和候选覆盖均下降。
+- 结论：不保留。始终暴露REPLAN把“可选择的语义反馈”变成了过强的动作暗示，模型过早离开仍有价值的路径；恢复v2.6仅在结构性effect连续不新颖时暴露REPLAN。下一轮不再改变动作频率，而是验证结构化产物中是否存在可复用的未消费依赖。
+
+## Generic Graph Core v2.8：Implicit Subgoal Branches（执行中）
+
+- 假设：多跳任务需要把effect history按语义依赖分支隔离，但不需要完整task-graph schema或显式graph API。PTC只增加一个短target标签；Runtime在首次出现时自动建立GOAL节点，相同标签复用同一分支，branch frontier按target局部反馈。
+- 边界：不要求预先列出全部目标，不增加constraint/evidence/candidate类型、依赖关系字段或额外模型调用；目标仍由Agent做语义命名，Runtime只保证稳定节点、局部effect历史和最多四个活跃分支的紧凑投影。
+- 固定20题：20/20有效，3/20（15%）；candidate retrieval recall 40.70%，fetched-evidence recall 25.31%。67次REPLAN、12次INSPECT，最大输入71356 token；正确题仅1234、653、181。
+- 结论：不保留。即使只增加一个自由target标签，模型仍会碎片化目标并在局部branch间频繁切换；它重复了旧显式task graph的复杂度问题。恢复v2.6的单root target，不再向模型schema增加语义图字段。
+
+## Generic Graph Core v2.9：First Equivalent Effect Replan（执行中）
+
+- 假设：确定性复用已经证明等价effect不会增加信息；等到连续两次等价effect才提示REPLAN会浪费一个动作。把通用阈值从2降为1，在第一次结构性停滞时暴露同一branch frontier，其余架构保持v2.6不变。
+- 边界：仍不对新但无关的artifact做语义判断，不改变工具、query、目标或程序；这是单一通用控制参数，不增加schema和组件。
+- 固定20题：20/20有效，4/20（20%）；candidate retrieval recall 37.21%，fetched-evidence recall 30.03%。REPLAN激增至111次，正确题为1234、653、380、266。
+- 结论：不保留。第一次等价effect就提示会让模型围绕同一结构性停滞反复声明REPLAN，而不是产生更好的新路径；恢复v2.6的stagnant streak=2。阈值继续微调没有通用价值，停止此方向。
+
+## 本轮最终选择：通用主线与结果最优版分开记录
+
+- 通用架构主线选择v2.6 Implicit Graph Core：单EpisodeGraph、ToolEffectContract、PTCExecutionProjection和一个GoalGraphAdaptation Controller；BrowseComp adapter只暴露search/fetch，模型schema仅增加action和expected_change。保留嵌套artifact consumption、artifact→persistent state provenance、确定性复用、stagnant streak=2的branch frontier，以及同图FAILURE→PATCH。
+- 固定20题结果：v2.6为7/20（35%），没有超过项目既有固定20题最好v0.5的8/20（40%）。因此不能宣称本轮通用化提高了端到端准确率；它的实证收益是9/10失败进入成功PATCH、实际重复search被缓存，以及较小的模型接口与上下文。
+- 结果最优版仍为v0.5：固定20题8/20；其唯一一次最终pilot100已完成，结果38/100，且未超过现存v11重评分报告42%。本轮不重复运行pilot100，因为新通用版本没有越过固定20题最好结果，重复大样本只会增加成本而不改变版本选择。
+- 停止理由：v2.3的实际tool path、v2.4的自动工作记忆、v2.7的持续语义REPLAN、v2.8的隐式子目标和v2.9的提前REPLAN均无增益或明显退化。继续添加member frontier、semantic evidence或检索特定字段会重新走向BrowseComp专用research graph，违背本轮“简洁、通用、逐步反馈”的原则。

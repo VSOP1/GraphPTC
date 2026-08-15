@@ -247,6 +247,7 @@ def extend_ptc_spec_with_graph_control(
     base_spec: dict[str, Any],
     *,
     extra_properties: Mapping[str, Any] | None = None,
+    include_target: bool = True,
     include_input_artifacts: bool = True,
     action_description: str = "The explicit graph-control action implemented by this block.",
     target_description: str = "An existing goal, action, state, or artifact node id.",
@@ -263,17 +264,18 @@ def extend_ptc_spec_with_graph_control(
             "enum": ["CONTINUE", "INSPECT", "PATCH", "REPLAN", "REUSE_REPLAY"],
             "description": action_description,
         },
-        "target": {
-            "type": "string",
-            "minLength": 1,
-            "description": target_description,
-        },
         "expected_change": {
             "type": "string",
             "minLength": 1,
             "description": expected_change_description,
         },
     }
+    if include_target:
+        controls["target"] = {
+            "type": "string",
+            "minLength": 1,
+            "description": target_description,
+        }
     if include_input_artifacts:
         controls["input_artifacts"] = {
             "type": "array",
@@ -288,7 +290,11 @@ def extend_ptc_spec_with_graph_control(
     properties.update(copy.deepcopy(dict(extra_properties or {})))
     spec["function"]["parameters"]["properties"] = properties
     required = list(spec["function"]["parameters"].get("required", ()))
-    for name in ("code", "action", "target", "expected_change"):
+    required_controls = ["code", "action"]
+    if include_target:
+        required_controls.append("target")
+    required_controls.append("expected_change")
+    for name in required_controls:
         if name not in required:
             required.append(name)
     spec["function"]["parameters"]["required"] = required

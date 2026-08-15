@@ -84,6 +84,12 @@ class PTCExecutionProjection:
         after = state_after if isinstance(state_after, Mapping) else {}
         loaded = {str(value) for value in runtime_trace.get("loaded_names", ())}
         stored = {str(value) for value in runtime_trace.get("stored_names", ())}
+        block_actions = set(self._graph.successors(block_id, edge_type="executes"))
+        block_artifacts = {
+            edge["target"]
+            for edge in self._graph.edges
+            if edge["type"] == "produces" and edge["source"] in block_actions
+        }
 
         for name in sorted(loaded):
             state_id = self._current_states.get(name)
@@ -99,6 +105,8 @@ class PTCExecutionProjection:
             version = self._state_versions.get(name, 0) + 1
             state_id = self._new_state(name, after[name], version=version)
             self._graph.add_edge("writes", block_id, state_id)
+            for artifact_id in block_artifacts:
+                self._graph.add_edge("derives", artifact_id, state_id)
             if previous is not None:
                 self._graph.add_edge("supersedes", previous, state_id)
 
