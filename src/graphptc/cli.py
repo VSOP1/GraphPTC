@@ -21,7 +21,6 @@ from .browsecomp_plus_benchmark import (
 )
 from .config import ConfigError, ExperimentConfig
 from .deepsearchqa import DeepSearchQAError, download_deepsearchqa
-from .stage1 import run_stage1_browsecomp_plus
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
@@ -106,20 +105,6 @@ def _run_command(
     if args.command == "run-browsecomp-plus":
         summary = run_browsecomp_plus_benchmark(
             config,
-            limit=args.limit,
-            example_ids=args.example_id,
-            resume=not args.restart,
-            progress=_print_progress,
-        )
-        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
-        return 0 if summary.failed == 0 else 1
-
-    if args.command == "run-graphptc-stage1":
-        summary = run_stage1_browsecomp_plus(
-            config,
-            events_path=args.events_path,
-            shadow_output_path=args.shadow_output_path,
-            active_repair_output_path=args.active_repair_output_path,
             limit=args.limit,
             example_ids=args.example_id,
             resume=not args.restart,
@@ -237,41 +222,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Grade BrowseComp-Plus predictions with the configured development judge.",
     )
     _add_config_argument(browsecomp_plus_evaluate, default=BROWSECOMP_PLUS_CONFIG)
-
-    stage1_run = subparsers.add_parser(
-        "run-graphptc-stage1",
-        help="Run frozen few-shot PTC with append-only Stage 1 events.",
-    )
-    _add_config_argument(stage1_run, default=BROWSECOMP_PLUS_CONFIG)
-    stage1_run.add_argument(
-        "--events-path",
-        type=Path,
-        help="Event JSONL path (default: events.jsonl beside responses).",
-    )
-    stage1_run.add_argument(
-        "--shadow-output-path",
-        type=Path,
-        help="Enable Stage 6.1 post-episode shadow analysis and write JSONL records.",
-    )
-    stage1_run.add_argument(
-        "--active-repair-output-path",
-        type=Path,
-        help="Enable Stage 6.2 active block repair and write JSONL records.",
-    )
-    stage1_run.add_argument(
-        "--limit", type=int, help="Run only the first N selected examples."
-    )
-    stage1_run.add_argument(
-        "--example-id",
-        action="append",
-        default=[],
-        help="Run a specific BrowseComp-Plus query ID; repeat for multiple IDs.",
-    )
-    stage1_run.add_argument(
-        "--restart",
-        action="store_true",
-        help="Replace the response and event files instead of resuming.",
-    )
 
     return parser
 

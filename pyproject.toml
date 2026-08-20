@@ -23,9 +23,6 @@ browsecomp-plus = [
 gemini = [
     "google-genai==2.15.0",
 ]
-codeact = [
-    "smolagents==1.26.0",
-]
 dev = [
     "pytest==9.1.1",
     "pytest-cov==7.0.0",
