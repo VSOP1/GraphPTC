@@ -29,6 +29,7 @@ def main() -> None:
         default=Path("data/browsecomp_plus/pilot20.manifest.json"),
     )
     parser.add_argument("--count", type=int, default=20)
+    parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--seed", default="baseline-v2-pilot20-2026-08-01")
     parser.add_argument(
         "--exclude-id",
@@ -46,7 +47,9 @@ def main() -> None:
         eligible,
         key=lambda record: _selection_key(args.seed, str(record["query_id"])),
     )
-    selected = ranked[: args.count]
+    if args.offset < 0:
+        raise ValueError("Offset must be non-negative")
+    selected = ranked[args.offset : args.offset + args.count]
     if len(selected) != args.count:
         raise ValueError(
             f"Requested {args.count} examples but only {len(selected)} are eligible"
@@ -62,6 +65,9 @@ def main() -> None:
         "source_sha256": _sha256(args.source),
         "source_examples": len(records),
         "count": len(selected),
+        "offset": args.offset,
+        "rank_start": args.offset + 1,
+        "rank_end": args.offset + len(selected),
         "excluded_ids": sorted(excluded, key=lambda value: int(value)),
         "selected_ids": [str(record["query_id"]) for record in selected],
         "output": str(args.output),

@@ -23,8 +23,8 @@ top_k = 5
 snippet_max_tokens = 512
 snippet_max_chars = 2048
 max_tool_calls = 1000
-expected_examples = 20
-prompt_variant = "original-ptc-v1"
+expected_examples = 100
+prompt_variant = "fewshot-ptc-v1"
 
 [runtime]
 max_turns = 30
@@ -38,18 +38,18 @@ max_compactions = 0
 max_total_output_tokens = 61440
 
 [benchmark]
-dataset_path = "data/browsecomp_plus/pilot20.questions.jsonl"
-responses_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/responses.jsonl"
-grades_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/grades.jsonl"
-report_path = "runs/browsecomp_plus/fewshot-ablation-pilot5/original/report.json"
-workers = 4
+dataset_path = "data/browsecomp_plus/pilot100-fold3.questions.jsonl"
+responses_path = "runs/browsecomp_plus/fewshot-ptc-v1-turn30-fold3/responses.jsonl"
+grades_path = "runs/browsecomp_plus/fewshot-ptc-v1-turn30-fold3/grades.jsonl"
+report_path = "runs/browsecomp_plus/fewshot-ptc-v1-turn30-fold3/report.json"
+workers = 8
 
 [grader]
 provider = "openai_compatible"
 model = "mimo-v2.5"
 base_url = "https://api.xiaomimimo.com/v1"
 api_key_env = "MIMO_API_KEY"
-workers = 5
+workers = 10
 max_retries = 2
 max_completion_tokens = 1024
 thinking = "disabled"

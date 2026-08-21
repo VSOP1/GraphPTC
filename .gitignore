@@ -11,6 +11,8 @@ data/browsecomp_plus/upstream/
 data/browsecomp_plus/official_indexes/
 data/browsecomp_plus/qwen3-tokenizer/
 data/browsecomp_plus/*.jsonl
+!data/browsecomp_plus/pilot100-fold2.questions.jsonl
+!data/browsecomp_plus/pilot100-fold3.questions.jsonl
 data/browsecomp_plus/*.sqlite3
 data/browsecomp_plus/*.sqlite3.tmp
 data/browsecomp_plus/qrel_*.txt

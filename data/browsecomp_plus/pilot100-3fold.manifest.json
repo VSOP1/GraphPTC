@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "method": "sha256(seed + ':' + query_id), ascending; contiguous non-overlapping windows",
+  "seed": "baseline-v2-pilot20-2026-08-01",
+  "source": "data/browsecomp_plus/questions.jsonl",
+  "source_sha256": "f64b7220211f03dac507453c486082fa2950dc491151d56dd3836570cbeb3660",
+  "source_examples": 830,
+  "excluded_ids": ["1", "3", "5", "6", "7", "8", "10", "11", "12", "15"],
+  "folds": [
+    {
+      "fold": 1,
+      "offset": 0,
+      "count": 100,
+      "path": "data/browsecomp_plus/pilot100.questions.jsonl",
+      "sha256": "573c938eacce3a9fd9363c3be42aae5708ac854c8e2f4ed92dd0a896fb433cef"
+    },
+    {
+      "fold": 2,
+      "offset": 100,
+      "count": 100,
+      "path": "data/browsecomp_plus/pilot100-fold2.questions.jsonl",
+      "sha256": "c8f59156f9f10dc10ec3b516580d130ff56103672a72083b601de357c78b20b6",
+      "manifest": "data/browsecomp_plus/pilot100-fold2.manifest.json"
+    },
+    {
+      "fold": 3,
+      "offset": 200,
+      "count": 100,
+      "path": "data/browsecomp_plus/pilot100-fold3.questions.jsonl",
+      "sha256": "6f430a93776bc0188f723f36c0421911ef9f275d0d0fac194517421b7f71806c",
+      "manifest": "data/browsecomp_plus/pilot100-fold3.manifest.json"
+    }
+  ],
+  "union_count": 300,
+  "pairwise_disjoint": true
+}
