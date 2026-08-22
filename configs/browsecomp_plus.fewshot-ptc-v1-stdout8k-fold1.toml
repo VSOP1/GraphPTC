@@ -31,21 +31,17 @@ max_turns = 30
 max_ptc_blocks = 29
 task_timeout_seconds = 1800.0
 code_timeout_seconds = 120.0
-max_stdout_chars = 4000
+max_stdout_chars = 8000
 finalization_max_tokens = 2048
 compaction_max_tokens = 2048
 max_compactions = 0
 max_total_output_tokens = 61440
-reuse_exact_results = false
-graph_progress_mode = "off"
-graph_adaptation_mode = "generic"
-graph_answer_review = false
 
 [benchmark]
-dataset_path = "data/browsecomp_plus/pilot100-fold2.questions.jsonl"
-responses_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold2/responses.jsonl"
-grades_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold2/grades.jsonl"
-report_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold2/report.json"
+dataset_path = "data/browsecomp_plus/pilot100.questions.jsonl"
+responses_path = "runs/browsecomp_plus/fewshot-ptc-v1-stdout8k-fold1/responses.jsonl"
+grades_path = "runs/browsecomp_plus/fewshot-ptc-v1-stdout8k-fold1/grades.jsonl"
+report_path = "runs/browsecomp_plus/fewshot-ptc-v1-stdout8k-fold1/report.json"
 workers = 8
 
 [grader]

@@ -23,7 +23,7 @@ top_k = 5
 snippet_max_tokens = 512
 snippet_max_chars = 2048
 max_tool_calls = 1000
-expected_examples = 100
+expected_examples = 20
 prompt_variant = "fewshot-ptc-v1"
 
 [runtime]
@@ -42,18 +42,18 @@ graph_adaptation_mode = "generic"
 graph_answer_review = false
 
 [benchmark]
-dataset_path = "data/browsecomp_plus/pilot100-fold3.questions.jsonl"
-responses_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold3/responses.jsonl"
-grades_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold3/grades.jsonl"
-report_path = "runs/browsecomp_plus/graphptc-generic-core-v2.6-implicit-core-fold3/report.json"
-workers = 8
+dataset_path = "data/browsecomp_plus/pilot20.questions.jsonl"
+responses_path = "runs/browsecomp_plus/graphptc-pilot20/responses.jsonl"
+grades_path = "runs/browsecomp_plus/graphptc-pilot20/grades.jsonl"
+report_path = "runs/browsecomp_plus/graphptc-pilot20/report.json"
+workers = 4
 
 [grader]
 provider = "openai_compatible"
 model = "mimo-v2.5"
 base_url = "https://api.xiaomimimo.com/v1"
 api_key_env = "MIMO_API_KEY"
-workers = 10
+workers = 5
 max_retries = 2
 max_completion_tokens = 1024
 thinking = "disabled"
