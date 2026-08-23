@@ -227,22 +227,6 @@ class PlanRevisionLedger:
         return copy.deepcopy(self._graph.nodes[plan_id])
 
 
-def append_graph_runtime_contract(
-    system_prompt: str,
-    *,
-    manifest: tuple[dict[str, Any], ...],
-    guidance: str,
-) -> str:
-    """Attach a graph contract without coupling it to a benchmark prompt."""
-    return (
-        system_prompt
-        + "\n\n<graph_runtime_definitions>\n"
-        + json.dumps(manifest, ensure_ascii=False, indent=2)
-        + "\n</graph_runtime_definitions>\n\n"
-        + guidance
-    )
-
-
 def extend_ptc_spec_with_graph_control(
     base_spec: dict[str, Any],
     *,
@@ -261,7 +245,7 @@ def extend_ptc_spec_with_graph_control(
     controls: dict[str, Any] = {
         "action": {
             "type": "string",
-            "enum": ["CONTINUE", "INSPECT", "PATCH", "REPLAN", "REUSE_REPLAY"],
+            "enum": ["CONTINUE", "INSPECT", "PATCH", "REPLAN"],
             "description": action_description,
         },
         "expected_change": {

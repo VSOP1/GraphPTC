@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "benchmark": "AppWorld",
+  "split": "dev",
+  "selection": "first complete three-variation scenario in official dev order",
+  "task_ids": [
+    "50e1ac9_1",
+    "50e1ac9_2",
+    "50e1ac9_3"
+  ],
+  "task_ids_sha256": "0e0a6402f18ca31335ad344ee02f259152db8df708c16a44796fa46314ae5826",
+  "appworld_code_version": "0.1.3.post1",
+  "appworld_data_version": "0.1.0",
+  "dev_dataset_sha256": "9fa976589300ea8905708257144d801d1604b06d85fb0181e381df8a3ba85001",
+  "graphptc_commit": "0eeb1435450ec2f6f04854bf298eeecb13ba343e",
+  "graphptc_source_sha256": "112a1c057bba718351994ed9545a319f7cc34887ffa364235a266442557be06c",
+  "config": "configs/appworld.graphptc-dev-pilot.toml",
+  "config_sha256": "cae65f44e64c08d5eafc266bf1c6ed3195226173a7a402c4b0b9a5084875d933",
+  "workers": 2,
+  "notes": "GraphPTC single arm. Frozen after the one-task dev smoke passed official evaluation. No baseline and no test split access."
+}

@@ -20,12 +20,18 @@ from .browsecomp_plus_benchmark import (
     run_browsecomp_plus_benchmark,
 )
 from .config import ConfigError, ExperimentConfig
+from .appworld_benchmark import (
+    evaluate_appworld_benchmark,
+    inspect_appworld,
+    run_appworld_benchmark,
+)
 from .deepsearchqa import DeepSearchQAError, download_deepsearchqa
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
 BROWSECOMP_CONFIG = "configs/browsecomp.example.toml"
 BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus.example.toml"
+APPWORLD_CONFIG = "configs/appworld.graphptc-dev-smoke.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -116,6 +122,24 @@ def _run_command(
     if args.command == "evaluate-browsecomp-plus":
         result = evaluate_browsecomp_plus_benchmark(config)
         print(json.dumps(result.summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-appworld":
+        print(json.dumps(inspect_appworld(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-appworld":
+        summary = run_appworld_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            restart=args.restart,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.evaluator_failures == 0 else 1
+
+    if args.command == "evaluate-appworld":
+        print(json.dumps(evaluate_appworld_benchmark(config), ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
@@ -222,6 +246,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Grade BrowseComp-Plus predictions with the configured development judge.",
     )
     _add_config_argument(browsecomp_plus_evaluate, default=BROWSECOMP_PLUS_CONFIG)
+
+    appworld_inspect = subparsers.add_parser(
+        "inspect-appworld", help="Inspect the isolated official AppWorld installation and dev split."
+    )
+    _add_config_argument(appworld_inspect, default=APPWORLD_CONFIG)
+
+    appworld_run = subparsers.add_parser(
+        "run-appworld", help="Run GraphPTC in isolated AppWorld task worlds."
+    )
+    _add_config_argument(appworld_run, default=APPWORLD_CONFIG)
+    appworld_run.add_argument("--limit", type=int)
+    appworld_run.add_argument("--task-id", action="append", default=[])
+    appworld_run.add_argument("--restart", action="store_true")
+
+    appworld_evaluate = subparsers.add_parser(
+        "evaluate-appworld", help="Run the official AppWorld evaluator over saved task worlds."
+    )
+    _add_config_argument(appworld_evaluate, default=APPWORLD_CONFIG)
 
     return parser
 

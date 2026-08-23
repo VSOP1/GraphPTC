@@ -87,7 +87,6 @@ def main() -> None:
             user_prompt_template=BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
             runtime_functions=(tools.search, tools.fetch),
             persistent=True,
-            structured_observation=False,
             ptc_tool_spec=BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC,
         )
         result = agent.run(item["question"])

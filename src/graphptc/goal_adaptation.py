@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import copy
 from collections import Counter
 from functools import wraps
 from typing import Any, Callable, Mapping
@@ -261,9 +262,18 @@ class GoalGraphAdaptation:
             "missed_graph_deltas": self._missed_actions,
             "aligned_actions": self._realized_actions,
             "misaligned_actions": self._missed_actions,
-            "policy_overrides": 0,
-            "program_overrides": 0,
             "research_graph": graph,
+        }
+
+    def graph_artifact(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "nodes": [
+                copy.deepcopy(self._graph.nodes[node_id])
+                for node_id in self._graph.node_order
+            ],
+            "edges": copy.deepcopy(self._graph.edges),
+            "artifacts": copy.deepcopy(self._graph.artifacts),
         }
 
     def _tool_wrapper(
@@ -443,8 +453,6 @@ class GoalGraphAdaptation:
             realized = bool(getattr(trace, "success", False))
         elif selected == "INSPECT":
             realized = self._inspection_count > action["inspection_count"]
-        elif selected == "REUSE_REPLAY":
-            realized = self._artifact_loads > action["artifact_loads"]
         else:
             realized = bool(effect.get("progressed")) or any(
                 after[key] > action["before"][key]

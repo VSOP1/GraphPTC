@@ -82,7 +82,6 @@ def _agent(
             max_stdout_chars=max_stdout_chars,
         ),
         runtime_functions=(tools.search, tools.fetch),
-        structured_observation=False,
         observer=observer,
         demonstration_messages=demonstration_messages,
     )

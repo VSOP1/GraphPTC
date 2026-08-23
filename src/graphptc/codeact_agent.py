@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable, Iterable
 from typing import Any, Mapping
 
@@ -9,7 +8,7 @@ from toolregistry import ToolRegistry
 from .config import RuntimeConfig
 from .observability import ExecutionObserver
 from .persistent_runtime import PersistentIpcRuntime
-from .ptc import PTC_TOOL_SPEC, OriginalPTCAgent, PTCBlockTrace, _truncate
+from .ptc import PTC_TOOL_SPEC, OriginalPTCAgent, PTCBlockTrace
 from .search import TavilySearchTools
 
 
@@ -92,7 +91,6 @@ class CodeActPTCAgent(OriginalPTCAgent):
         runtime_functions: Iterable[Callable[..., Any]] | None = None,
         checkpoint_callback: Callable[[dict[str, Any]], None] | None = None,
         persistent: bool = True,
-        structured_observation: bool = False,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
         demonstration_messages: Iterable[dict[str, Any]] = (),
         post_block_message_factory: Callable[[PTCBlockTrace], str | None] | None = None,
@@ -104,20 +102,11 @@ class CodeActPTCAgent(OriginalPTCAgent):
         adaptation_initial_observation: Callable[[], str] | None = None,
         message_projection_callback: Callable[[list[dict[str, Any]]], None] | None = None,
         observer: ExecutionObserver | None = None,
-        active_repair_callback: (
-            Callable[[str, PersistentIpcRuntime], dict[str, Any]] | None
-        ) = None,
     ) -> None:
-        if active_repair_callback is not None and observer is None:
-            raise ValueError("active repair requires an execution observer")
         self._observer = observer
-        self._active_repair_callback = active_repair_callback
-        self._active_repair_attempted = False
         self._persistent_runtime = (
             PersistentIpcRuntime(observer=observer) if persistent else None
         )
-        self._structured_observation = structured_observation
-        self._seen_docids: set[str] = set()
         self._observed_block_count = 0
         super().__init__(
             model=model,
@@ -152,7 +141,6 @@ class CodeActPTCAgent(OriginalPTCAgent):
     def run(self, task: str):  # type: ignore[no-untyped-def]
         result = None
         self._observed_block_count = 0
-        self._active_repair_attempted = False
         if self._observer is not None:
             self._observer.emit("episode.started", data={"task": task})
         try:
@@ -195,7 +183,6 @@ class CodeActPTCAgent(OriginalPTCAgent):
             )
         if self._persistent_runtime is not None:
             self._persistent_runtime.active_block_id = block_id
-        calls_before = len(self._search_tools.calls)
         try:
             output, is_error, trace = super()._execute_block(turn_number, code)
         finally:
@@ -224,99 +211,4 @@ class CodeActPTCAgent(OriginalPTCAgent):
                 "runtime_trace": runtime_trace,
             }
         )
-        if (
-            is_error
-            and block_id is not None
-            and self._persistent_runtime is not None
-            and self._active_repair_callback is not None
-            and not self._active_repair_attempted
-        ):
-            self._active_repair_attempted = True
-            try:
-                repair = self._active_repair_callback(
-                    block_id, self._persistent_runtime
-                )
-            except Exception as exc:
-                repair = {
-                    "status": "active_repair_error",
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
-                }
-            if self._observer is not None:
-                self._observer.emit(
-                    "repair.finished",
-                    block_id=block_id,
-                    data={key: value for key, value in repair.items() if key != "output"},
-                )
-            if repair.get("status") == "repaired_active":
-                repaired_output = str(repair["output"])
-                stdout_chars = len(repaired_output)
-                stdout_truncated = stdout_chars > self._runtime.max_stdout_chars
-                output = _truncate(repaired_output, self._runtime.max_stdout_chars)
-                trace = PTCBlockTrace(
-                    **{
-                        **trace.__dict__,
-                        "code": str(repair["patched_code"]),
-                        "stdout": output,
-                        "stdout_chars": stdout_chars,
-                        "stdout_truncated": stdout_truncated,
-                        "success": True,
-                        "runtime_calls": int(
-                            repair.get("replay", {}).get(
-                                "executed_tool_call_count", 0
-                            )
-                        ),
-                        "error_type": None,
-                        "error_message": None,
-                    }
-                )
-                is_error = False
-        if not self._structured_observation or is_error:
-            return output, is_error, trace
-
-        calls = self._search_tools.calls[calls_before:]
-        returned_docids = {
-            str(docid)
-            for call in calls
-            for docid in call.get("docids", ())
-        }
-        new_docids = sorted(returned_docids - self._seen_docids)
-        repeated_docids = sorted(returned_docids & self._seen_docids)
-        self._seen_docids.update(returned_docids)
-        observation = "PTC_OBSERVATION " + json.dumps(
-            {
-                "status": "ok",
-                "stdout": output,
-                "tool_calls": len(calls),
-                "search_calls": sum(
-                    call.get("operation") == "search" for call in calls
-                ),
-                "fetch_calls": sum(
-                    call.get("operation") == "fetch" for call in calls
-                ),
-                "new_docids": new_docids,
-                "repeated_docids": repeated_docids,
-                "state": (
-                    self._persistent_runtime.last_state
-                    if self._persistent_runtime is not None
-                    else {}
-                ),
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-        observation_chars = len(observation)
-        observation_truncated = (
-            trace.stdout_truncated
-            or observation_chars > self._runtime.max_stdout_chars
-        )
-        observation = _truncate(observation, self._runtime.max_stdout_chars)
-        updated_trace = PTCBlockTrace(
-            **{
-                **trace.__dict__,
-                "stdout": observation,
-                "stdout_chars": observation_chars,
-                "stdout_truncated": observation_truncated,
-            }
-        )
-        return observation, False, updated_trace
+        return output, is_error, trace

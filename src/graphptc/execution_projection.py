@@ -32,6 +32,8 @@ class PTCExecutionProjection:
             },
         )
         self._graph.add_edge("contains", "task", block_id)
+        if isinstance(runtime_trace, Mapping):
+            self._project_external_actions(block_id, runtime_trace)
 
         code_artifact = f"artifact:block:{self._block_count}:code"
         self._graph.put_artifact(
@@ -76,6 +78,54 @@ class PTCExecutionProjection:
             )
             self._graph.add_edge("fails_at", block_id, failure_id)
         return block_id
+
+    def _project_external_actions(
+        self, block_id: str, runtime_trace: Mapping[str, Any]
+    ) -> None:
+        actions = runtime_trace.get("external_actions", ())
+        if not isinstance(actions, (list, tuple)):
+            return
+        for index, action in enumerate(actions, start=1):
+            if not isinstance(action, Mapping):
+                continue
+            action_id = f"api_action:{self._block_count}:{index}"
+            arguments = dict(action.get("arguments", {}))
+            effect = str(action.get("effect", "read"))
+            self._graph.add_node(
+                action_id,
+                "API_ACTION",
+                {
+                    "name": str(action.get("name", ""))[:500],
+                    "effect": effect,
+                    "success": bool(action.get("success", True)),
+                },
+            )
+            self._graph.add_edge("executes", block_id, action_id)
+            input_id = f"artifact:api_action:{self._block_count}:{index}:input"
+            self._graph.put_artifact(
+                input_id,
+                arguments,
+                kind="api_call_input",
+                data={"action": action_id},
+            )
+            self._graph.add_edge("consumes", input_id, action_id)
+            if effect == "write" and bool(action.get("success", True)):
+                state_id = f"state_effect:{self._block_count}:{index}"
+                self._graph.add_node(
+                    state_id,
+                    "STATE_EFFECT",
+                    {"action": str(action.get("name", ""))[:500]},
+                )
+                self._graph.add_edge("mutates", action_id, state_id)
+            else:
+                observation_id = f"artifact:api_action:{self._block_count}:{index}:observation"
+                self._graph.put_artifact(
+                    observation_id,
+                    dict(action),
+                    kind="api_call_observation",
+                    data={"action": action_id},
+                )
+                self._graph.add_edge("produces", action_id, observation_id)
 
     def _project_state(self, block_id: str, runtime_trace: Mapping[str, Any]) -> None:
         state_before = runtime_trace.get("state_before")

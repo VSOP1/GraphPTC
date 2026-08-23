@@ -140,3 +140,29 @@ def test_generic_controller_routes_execution_failure_to_patch() -> None:
         hooks.block_observation_factory(_trace()).removeprefix("GRAPH_DELTA ")
     )
     assert repaired["action_verification"]["realized"] is True
+
+
+def test_generic_controller_projects_external_api_actions_and_state_effects() -> None:
+    controller = GoalGraphAdaptation({}, {}, task="Update state", expose_graph_api=False)
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {"action": "CONTINUE", "target": "task", "expected_change": "update task state"}
+    )
+    trace = _trace()
+    trace.runtime_trace = {
+        "external_actions": [
+            {
+                "name": "POST /example/items",
+                "arguments": {"method": "post", "url": "/example/items", "data": {}},
+                "effect": "write",
+                "success": True,
+            }
+        ]
+    }
+
+    payload = json.loads(hooks.block_observation_factory(trace).removeprefix("GRAPH_DELTA "))
+    graph = controller.graph_artifact()
+
+    assert payload["actual_effect"]["state_changes"]
+    assert any(node["kind"] == "API_ACTION" for node in graph["nodes"])
+    assert any(edge["type"] == "mutates" for edge in graph["edges"])

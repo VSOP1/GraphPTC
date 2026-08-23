@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, Mapping, Protocol
 
 from toolregistry import ToolRegistry
+from codecell import BaseRuntime
 
 from .config import RuntimeConfig
 from .model import ModelTurn, TokenUsage, usage_to_dict
@@ -218,6 +219,7 @@ class OriginalPTCAgent:
         ) = None,
         adaptation_initial_observation: Callable[[], str] | None = None,
         message_projection_callback: Callable[[list[dict[str, Any]]], None] | None = None,
+        program_runtime: BaseRuntime | None = None,
     ) -> None:
         self._model = model
         self._search_tools = search_tools
@@ -225,15 +227,17 @@ class OriginalPTCAgent:
         self._system_prompt = system_prompt
         self._user_prompt_template = user_prompt_template
         functions = tuple(
-            runtime_functions
-            or (
+            (
                 search_tools.search_web,
                 search_tools.search_web_batch,
                 search_tools.fetch_url,
                 search_tools.fetch_urls,
             )
+            if runtime_functions is None
+            else runtime_functions
         )
         self._runtime_tool_names = {function.__name__ for function in functions}
+        self._program_runtime = program_runtime
         self._registry = self._create_registry(functions)
         self._checkpoint_callback = checkpoint_callback
         self._ptc_tool_spec = ptc_tool_spec
@@ -425,6 +429,12 @@ class OriginalPTCAgent:
                     )
                     if trace is not None and self._message_projection_callback is not None:
                         self._message_projection_callback(messages)
+                    if trace is not None and bool(
+                        getattr(self._program_runtime, "task_completed", False)
+                    ):
+                        result.status = "success"
+                        result.finish_reason = "task_completed"
+                        break
                     if (
                         (not is_error or self._post_block_message_on_error)
                         and trace is not None
@@ -435,7 +445,8 @@ class OriginalPTCAgent:
                             messages.append(
                                 {"role": "user", "content": post_block_message}
                             )
-                if result.finish_reason == "task_timeout":
+                if result.finish_reason in {"task_timeout", "task_completed"}:
+                    self._checkpoint(messages, result, turn_number + 1)
                     break
                 self._checkpoint(messages, result, turn_number + 1)
                 if finalization_requested:
@@ -456,6 +467,9 @@ class OriginalPTCAgent:
         finally:
             result.duration_ms = (time.perf_counter() - started) * 1_000
             result.search_calls = self._search_tools.calls
+            telemetry = getattr(self._program_runtime, "telemetry", None)
+            if callable(telemetry):
+                result.runtime_session = telemetry()
 
         return result
 
@@ -638,7 +652,12 @@ class OriginalPTCAgent:
         stdout_chars = len(output)
         stdout_truncated = stdout_chars > self._runtime.max_stdout_chars
         output = _truncate(output, self._runtime.max_stdout_chars)
+        runtime_trace = dict(
+            getattr(self._program_runtime, "last_execution_trace", {}) or {}
+        )
         runtime_calls = len(self._search_tools.calls) - calls_before
+        if isinstance(runtime_trace.get("external_actions"), list):
+            runtime_calls = len(runtime_trace["external_actions"])
         trace = PTCBlockTrace(
             turn=turn_number,
             tool_call_id=getattr(self, "_active_tool_call_id", None),
@@ -651,6 +670,7 @@ class OriginalPTCAgent:
             invocation_id=invocation_id,
             runtime_calls=runtime_calls,
             program_analysis=analysis,
+            runtime_trace=runtime_trace,
             error_type=error_type,
             error_message=error_message,
         )
@@ -663,7 +683,10 @@ class OriginalPTCAgent:
         registry = ToolRegistry()
         for function in functions:
             registry.register(function)
-        registry.ptc.enable(timeout=self._runtime.code_timeout_seconds)
+        registry.ptc.enable(
+            timeout=self._runtime.code_timeout_seconds,
+            runtime=self._program_runtime,
+        )
         return registry
 
 

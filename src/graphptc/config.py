@@ -47,6 +47,20 @@ class BrowseCompPlusConfig:
 
 
 @dataclass(frozen=True)
+class AppWorldConfig:
+    root: str = ""
+    dataset_name: str = "dev"
+    experiment_name: str = "graphptc-dev"
+    worker_command: tuple[str, ...] = ()
+    results_path: Path = Path("runs/appworld/graphptc-dev/results.jsonl")
+    report_path: Path = Path("runs/appworld/graphptc-dev/report.json")
+    graph_dir: Path = Path("runs/appworld/graphptc-dev/graphs")
+    workers: int = 1
+    expected_tasks: int = 56
+    prompt_variant: str = "appworld-general"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -58,10 +72,7 @@ class RuntimeConfig:
     compaction_max_tokens: int = 4_096
     max_compactions: int = 8
     max_total_output_tokens: int | None = None
-    reuse_exact_results: bool = False
-    graph_progress_mode: str = "off"
     graph_adaptation_mode: str = "off"
-    graph_answer_review: bool = False
 
 
 @dataclass(frozen=True)
@@ -94,6 +105,7 @@ class ExperimentConfig:
     benchmark: BenchmarkConfig
     grader: GraderConfig
     browsecomp_plus: BrowseCompPlusConfig
+    appworld: AppWorldConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -124,6 +136,15 @@ class ExperimentConfig:
                     candidate if candidate.is_absolute() else base / candidate
                 )
 
+        appworld = dict(raw.get("appworld", {}))
+        for key in ("results_path", "report_path", "graph_dir"):
+            value = appworld.get(key)
+            if value is not None:
+                candidate = Path(value)
+                appworld[key] = candidate if candidate.is_absolute() else base / candidate
+        if "worker_command" in appworld:
+            appworld["worker_command"] = tuple(appworld["worker_command"])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -131,6 +152,7 @@ class ExperimentConfig:
             benchmark=_build(BenchmarkConfig, benchmark),
             grader=_build(GraderConfig, raw.get("grader", {})),
             browsecomp_plus=_build(BrowseCompPlusConfig, browsecomp_plus),
+            appworld=_build(AppWorldConfig, appworld),
         )
 
     def require_api_key(self, env_name: str) -> str:

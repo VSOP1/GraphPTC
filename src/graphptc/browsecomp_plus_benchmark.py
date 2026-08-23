@@ -5,7 +5,6 @@ import gzip
 import hashlib
 import json
 import platform
-import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
@@ -37,20 +36,15 @@ from .config import ExperimentConfig, GraderConfig
 from .codeact_agent import CodeActPTCAgent
 from .direct_tool_agent import DirectToolAgent
 from .local_search import OfficialCorpusSearchTools
-from .exact_reuse import ExactReuseSearchTools
-from .graph_progress import GraphProgressView
 from .graph_agent import (
     GraphAgentHooks,
-    append_graph_runtime_contract,
     extend_ptc_spec_with_graph_control,
 )
 from .goal_adaptation import GoalGraphAdaptation
-from .online_adaptation import OnlineGraphAdaptation
 from .tool_effects import ToolEffectContract
 from .model import OpenAIChatModel
 from .observability import ExecutionObserver
-from .ptc import ModelRequestTrace, extract_result_tag
-from .model import usage_to_dict
+from .ptc import extract_result_tag
 from .experiments.phase_planning import PHASE_PLANNING_SUFFIX
 from .experiments.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
 
@@ -110,104 +104,6 @@ BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST_JSON = json.dumps(
     indent=2,
 )
 
-GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST: tuple[dict[str, Any], ...] = (
-    {
-        "name": "graph_add_constraint",
-        "description": "Declare a task constraint in the episode research graph.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "constraint_id": {"type": "string", "minLength": 1},
-                "description": {"type": "string", "minLength": 1},
-            },
-            "required": ["constraint_id", "description"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_add_candidate",
-        "description": "Declare a candidate answer without asserting that it is correct.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "candidate_id": {"type": "string", "minLength": 1},
-                "label": {"type": "string", "minLength": 1},
-            },
-            "required": ["candidate_id", "label"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_add_evidence",
-        "description": (
-            "Attach a supports/refutes edge using an exact quote from a document already fetched "
-            "in this episode. The runtime verifies the source span and graph identifiers."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "evidence_id": {"type": "string", "minLength": 1},
-                "docid": {"type": "string", "minLength": 1},
-                "quote": {"type": "string", "minLength": 1},
-                "relation": {"type": "string", "enum": ["supports", "refutes"]},
-                "target_id": {"type": "string", "minLength": 1},
-                "constraint_id": {"type": "string"},
-            },
-            "required": ["evidence_id", "docid", "quote", "relation", "target_id"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_frontier",
-        "description": (
-            "Return unresolved constraints, conflicted candidates, unfetched documents, and "
-            "reusable artifacts. It does not select the next action."
-        ),
-        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_trace",
-        "description": "Return a bounded provenance neighborhood for one graph node.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"node_id": {"type": "string", "minLength": 1}},
-            "required": ["node_id"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_load_artifact",
-        "description": (
-            "Load a persisted graph artifact, including an archived block observation, without "
-            "repeating the action that produced it."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"artifact_id": {"type": "string", "minLength": 1}},
-            "required": ["artifact_id"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-    {
-        "name": "graph_alternatives",
-        "description": "List alternative candidates with verified support/refutation counts.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"target_id": {"type": "string", "minLength": 1}},
-            "required": ["target_id"],
-            "additionalProperties": False,
-        },
-        "allowed_callers": ["programmatic_tool_call"],
-    },
-)
-
-
 _ORIGINAL_PTC_SEMANTIC_GUIDANCE = (
     "Use a PTC block as a Python research program and use Python as the intermediate data-processing "
     "layer, rather than merely wrapping a tool call. It may call the runtime tools multiple times "
@@ -240,150 +136,6 @@ BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT = (
 BROWSECOMP_PLUS_PHASE_PLANNING_SYSTEM_PROMPT = (
     BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT + PHASE_PLANNING_SUFFIX
 )
-
-
-GRAPH_ADAPTATION_V2_GUIDANCE = """<graph_adaptation_protocol>
-Use the Research Graph to choose and verify the next research step, not merely to record work.
-
-Lifecycle: INITIALIZE -> ASSESS -> DECIDE -> EXECUTE -> VERIFY -> ANSWER or REPLAN.
-
-1. INITIALIZE: On the first PTC block, provide task_graph exactly once. Decompose the question into
-stable, independently verifiable requirements and explicit depends_on relations. Use target="task"
-for this block.
-2. ASSESS: Read GRAPH_ASSESSMENT or the latest GRAPH_DELTA. Identify the unresolved requirement,
-conflict, failed execution, or reusable artifact that most directly blocks the answer.
-3. DECIDE: Choose one action and target before writing code. The metadata must describe the program
-you actually execute and expected_change must name an observable graph-state change.
-4. EXECUTE: Use one coherent Python program for all mechanically foreseeable search, fetch,
-filtering, comparison, aggregation, graph updates, and compact stdout. Preserve useful variables
-across PTC blocks.
-5. VERIFY: If the actual graph delta does not match expected_change, diagnose the miss and change
-the query, target, or action; do not repeat
-the same unsuccessful step.
-</graph_adaptation_protocol>
-
-<action_policy>
-- CONTINUE: acquire or process evidence for one unresolved requirement. Prefer a concrete unfetched
-  document or productive query lineage in target_context over unrelated broad retrieval.
-- INSPECT: resolve conflicting evidence, ambiguous candidate identity, or an unclear provenance
-  path with graph_trace or graph_alternatives before more retrieval.
-- PATCH: correct an execution failure and re-execute the repaired operation. Changing only metadata
-  is not a patch.
-- REUSE_REPLAY: load a relevant graph artifact instead of repeating its external search or fetch.
-- ANSWER: make no further tool call; return the final answer only when answer_readiness is satisfied.
-</action_policy>
-
-<graph_update_rules>
-Declare newly identified constraints and candidates in research_updates. Evidence must use an exact
-quote from a fetched document and may be committed inside the program with graph_add_evidence. The
-runtime validates identifiers and source quotes; it does not supply semantic judgment. A target must
-be task or a node already present or declared in the same call. When GRAPH_DELTA supplies
-suggested_operations, execute a relevant concrete operation before unrelated broad retrieval.
-</graph_update_rules>
-
-<answer_readiness>
-Answer only when every necessary requirement and dependency is covered by fetched evidence, the
-selected candidate is supported, and no material conflict remains. Otherwise target the specific
-missing requirement or conflict. Return the concise final answer inside <result> and </result> tags;
-separate multiple answers with commas.
-</answer_readiness>"""
-
-
-_GRAPH_ANSWER_REVIEW_SYSTEM = """You are a conservative final-answer verifier for an agent.
-Use only the supplied task graph and source-verified evidence. KEEP the proposed answer unless the
-verified evidence directly proves that it is wrong, incomplete, or uses a less precise entity name.
-Never invent a replacement from general knowledge. Return exactly one JSON object with keys
-decision (KEEP or REVISE), answer, and reason. For KEEP, copy the proposed answer exactly."""
-
-
-def _review_graph_answer(
-    *,
-    model: OpenAIChatModel,
-    result: Any,
-    proposed_answer: str,
-    context: dict[str, Any],
-    timeout_seconds: float,
-) -> tuple[str, dict[str, Any]]:
-    evidence = context.get("verified_evidence")
-    if not isinstance(evidence, list) or not evidence:
-        return proposed_answer, {"status": "skipped", "reason": "no_verified_evidence"}
-    payload = {
-        "proposed_answer": proposed_answer,
-        "task_graph": context,
-    }
-    messages = [
-        {
-            "role": "user",
-            "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-        }
-    ]
-    started = time.perf_counter()
-    try:
-        turn = model.create_turn(
-            system=_GRAPH_ANSWER_REVIEW_SYSTEM,
-            messages=messages,
-            tools=[],
-            timeout_seconds=timeout_seconds,
-            max_completion_tokens=512,
-            thinking="disabled",
-        )
-    except Exception as exc:
-        return proposed_answer, {
-            "status": "error",
-            "error_type": type(exc).__name__,
-            "error": str(exc)[:500],
-        }
-    duration_ms = (time.perf_counter() - started) * 1_000
-    result.model_requests += 1
-    result.usage = result.usage + turn.usage
-    result.duration_ms += duration_ms
-    result.requests.append(
-        ModelRequestTrace(
-            turn=result.model_requests,
-            kind="graph_answer_review",
-            tools_available=False,
-            context_chars=len(json.dumps(messages, ensure_ascii=False)),
-            duration_ms=duration_ms,
-            stop_reason=turn.stop_reason,
-            tool_calls=len(turn.tool_calls),
-            usage=usage_to_dict(turn.usage),
-            attempts=[asdict(attempt) for attempt in turn.attempts],
-        )
-    )
-    parsed = _parse_graph_answer_review(turn.text)
-    if parsed is None:
-        return proposed_answer, {
-            "status": "invalid",
-            "raw_response": turn.text[:1_000],
-        }
-    decision = str(parsed.get("decision", "")).strip().upper()
-    reviewed = str(parsed.get("answer", "")).strip()
-    if decision == "REVISE" and reviewed:
-        result.answer = f"<result>{reviewed}</result>"
-        return reviewed, {
-            "status": "revised",
-            "decision": decision,
-            "original_answer": proposed_answer,
-            "reviewed_answer": reviewed,
-            "reason": str(parsed.get("reason", ""))[:1_000],
-        }
-    return proposed_answer, {
-        "status": "kept",
-        "decision": "KEEP",
-        "reason": str(parsed.get("reason", ""))[:1_000],
-    }
-
-
-def _parse_graph_answer_review(text: str) -> dict[str, Any] | None:
-    value = text.strip()
-    if value.startswith("```"):
-        lines = value.splitlines()
-        value = "\n".join(lines[1:-1]).strip()
-    try:
-        parsed = json.loads(value)
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
 
 
 BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE = """Answer the following question using the
@@ -421,10 +173,6 @@ _PROMPT_VARIANTS = {
         BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
     ),
     "fewshot-ptc-v1": (
-        BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
-        BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
-    ),
-    "fewshot-ptc-graph-v2": (
         BROWSECOMP_PLUS_ORIGINAL_PTC_SYSTEM_PROMPT,
         BROWSECOMP_PLUS_ORIGINAL_PTC_USER_PROMPT_TEMPLATE,
     ),
@@ -497,10 +245,6 @@ def run_browsecomp_plus_benchmark(
     progress: ProgressCallback | None = None,
     observer_factory: Callable[[str, str], ExecutionObserver] | None = None,
     post_episode_callback: Callable[[str, str, dict[str, Any]], None] | None = None,
-    active_repair_callback_factory: Callable[
-        [str, str, OfficialCorpusSearchTools], Callable[..., dict[str, Any]]
-    ]
-    | None = None,
     checkpoint_archive_dir: Path | None = None,
 ) -> BenchmarkRunSummary:
     if limit is not None and limit < 1:
@@ -550,33 +294,10 @@ def run_browsecomp_plus_benchmark(
                 max_tool_calls=config.browsecomp_plus.max_tool_calls,
                 timeout_seconds=config.browsecomp_plus.retriever_timeout_seconds,
             )
-            tools = (
-                ExactReuseSearchTools(
-                    base_tools,
-                    max_tool_calls=config.browsecomp_plus.max_tool_calls,
-                )
-                if config.runtime.reuse_exact_results
-                else base_tools
-            )
-            progress_mode = config.runtime.graph_progress_mode
+            tools = base_tools
             adaptation_mode = config.runtime.graph_adaptation_mode
             _validate_control_modes(config)
-            graph_progress = (
-                GraphProgressView(
-                    tools,
-                    mode=progress_mode.removesuffix("_auto"),
-                    max_tool_calls=config.browsecomp_plus.max_tool_calls,
-                )
-                if progress_mode != "off"
-                else None
-            )
-            if adaptation_mode == "online":
-                graph_adaptation = OnlineGraphAdaptation(
-                    tools,
-                    max_tool_calls=config.browsecomp_plus.max_tool_calls,
-                    task=example.question,
-                )
-            elif adaptation_mode == "generic":
+            if adaptation_mode == "generic":
                 graph_adaptation = GoalGraphAdaptation(
                     {"search": tools.search, "fetch": tools.fetch},
                     {
@@ -614,19 +335,9 @@ def run_browsecomp_plus_benchmark(
                 "runtime_functions": (
                     graph_hooks.runtime_functions
                     if graph_hooks is not None
-                    else (
-                        (tools.search, tools.fetch)
-                        if graph_progress is None or progress_mode.endswith("_auto")
-                        else (tools.search, tools.fetch, graph_progress.graph_progress)
-                    )
+                    else (tools.search, tools.fetch)
                 ),
-                "post_block_message_factory": (
-                    (
-                        (lambda _trace: graph_progress.capsule())
-                        if graph_progress is not None and progress_mode.endswith("_auto")
-                        else None
-                    )
-                ),
+                "post_block_message_factory": None,
                 "post_block_message_on_error": False,
                 "block_observation_factory": (
                     None if graph_hooks is None else graph_hooks.block_observation_factory
@@ -667,18 +378,10 @@ def run_browsecomp_plus_benchmark(
                     **agent_kwargs,
                     ptc_tool_spec=_ptc_tool_spec(config),
                     persistent=True,
-                    structured_observation=False,
                     demonstration_messages=_demonstration_messages(config),
                     observer=(
                         observer_factory(example.example_id, run_signature)
                         if observer_factory is not None
-                        else None
-                    ),
-                    active_repair_callback=(
-                        active_repair_callback_factory(
-                            example.example_id, run_signature, tools
-                        )
-                        if active_repair_callback_factory is not None
                         else None
                     ),
                 )
@@ -686,19 +389,6 @@ def run_browsecomp_plus_benchmark(
             prediction = (
                 extract_result_tag(result.answer) if result.status == "success" else None
             )
-            answer_review = None
-            if (
-                prediction is not None
-                and graph_adaptation is not None
-                and config.runtime.graph_answer_review
-            ):
-                prediction, answer_review = _review_graph_answer(
-                    model=model,
-                    result=result,
-                    proposed_answer=prediction,
-                    context=graph_adaptation.answer_review_context(),
-                    timeout_seconds=config.model.timeout_seconds,
-                )
             if graph_adaptation is not None:
                 graph_adaptation.finish(answered=prediction is not None)
             status = "success" if prediction is not None else "failed"
@@ -734,13 +424,9 @@ def run_browsecomp_plus_benchmark(
                 "model": config.model.model,
                 "created_at": datetime.now(UTC).isoformat(),
                 "agent": result.to_dict(),
-                "graph_progress": (
-                    None if graph_progress is None else graph_progress.telemetry()
-                ),
                 "graph_adaptation": (
                     None if graph_adaptation is None else graph_adaptation.telemetry()
                 ),
-                "graph_answer_review": answer_review,
             }
             checkpoint_path.unlink(missing_ok=True)
         except Exception as exc:
@@ -1078,60 +764,18 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         raise ValueError(
             f"Unknown BrowseComp-Plus prompt variant {variant!r}; supported: {supported}"
         ) from exc
-    adaptation_mode = config.runtime.graph_adaptation_mode
-    if adaptation_mode not in {"online", "generic"}:
+    if config.runtime.graph_adaptation_mode != "generic":
         return system_prompt, user_prompt
-    if adaptation_mode == "generic":
-        graph_guidance = (
-            "GRAPH_ASSESSMENT and GRAPH_DELTA expose a compact, domain-neutral effect frontier. "
-            "The runtime automatically records actions, artifacts, state dependencies, failures, "
-            "and whether recent actions produced new or equivalent results; it never chooses a tool "
-            "or its arguments. Describe the action actually taken and its expected observable change. "
-            "If REPLAN is offered, preserve productive paths, avoid exhausted ones, and change the "
-            "dependency path. If PATCH is offered, correct and re-execute the failed operation. "
-            "Answer directly when the available results satisfy the task."
-        )
-        return system_prompt + "\n\n" + graph_guidance, user_prompt
-    elif variant == "fewshot-ptc-graph-v2":
-        graph_guidance = GRAPH_ADAPTATION_V2_GUIDANCE
-        graph_manifest = GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
-    else:
-        graph_guidance = (
-            "GRAPH_ASSESSMENT and each GRAPH_DELTA expose graph-grounded action opportunities for "
-            + "the next step. Choose an action and target whose stated reason fits your semantic "
-            + "judgment; the runtime will not choose or rewrite your program. The action and target "
-            + "metadata must describe the program you actually execute. When useful, declare the "
-            + "currently targeted semantic constraint with the flat constraint_id and constraint "
-            + "fields. On the first PTC block, initialize task_graph once with stable, independently "
-            + "verifiable requirements and their depends_on relations; do not repeat or redefine that "
-            + "initial decomposition on later blocks. Include additional newly identified constraints, "
-            + "candidates, or evidence in "
-            + "research_updates; empty arrays mean no semantic update. The target must be task or a "
-            + "node already present or declared in the same research_updates object. "
-            + "Research graph relations are agent-authored; the runtime verifies identifiers and "
-            + "that evidence quotes occur in fetched documents. GRAPH_DELTA is appended to the tool "
-            + "observation and supplies bounded valid actions, targets, and dependency context. "
-            + "ANSWER means return the final answer without another tool call. For CONTINUE, prefer "
-            + "its target_context before unrelated broad retrieval: "
-            + "fetch a relevant listed unfetched document or refine from the listed query history. "
-            + "When fetched content supports a plausible answer, declare the candidate and "
-            + "attach an exact supporting or refuting quote in the same program before printing the "
-            + "compact observation. For CONTINUE, use retrieval_memory to avoid repeating stalled "
-            + "queries and to preserve productive query directions for the current target. When the "
-            + "selected opportunity contains suggested_operations, execute that concrete graph-backed "
-            + "operation before starting unrelated broad retrieval."
-            + " When the first opportunity is REPLAN because recent actions reproduced equivalent "
-            + "artifacts, change the approach or dependency path before issuing more tool calls."
-        )
-        graph_manifest = GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
-    return (
-        append_graph_runtime_contract(
-            system_prompt,
-            manifest=graph_manifest,
-            guidance=graph_guidance,
-        ),
-        user_prompt,
+    graph_guidance = (
+        "GRAPH_ASSESSMENT and GRAPH_DELTA expose a compact, domain-neutral effect frontier. "
+        "The runtime records actions, artifacts, state dependencies, failures, and whether recent "
+        "actions produced new or equivalent results; it never chooses a tool or its arguments. "
+        "Describe the action actually taken and its expected observable change. If REPLAN is offered, "
+        "preserve productive paths, avoid exhausted ones, and change the dependency path. If PATCH is "
+        "offered, correct and re-execute the failed operation. Answer directly when the available "
+        "results satisfy the task."
     )
+    return system_prompt + "\n\n" + graph_guidance, user_prompt
 
 
 def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
@@ -1141,7 +785,7 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
     if config.runtime.graph_adaptation_mode == "generic":
         spec = copy.deepcopy(BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC)
         spec["function"]["parameters"]["properties"]["code"]["description"] += (
-            " Graph dependency tracking and exact deterministic tool reuse are automatic."
+            " Graph dependency tracking and effect recording are automatic."
         )
         return extend_ptc_spec_with_graph_control(
             spec,
@@ -1150,132 +794,7 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
             action_description="The graph-control intent implemented by this PTC block.",
             expected_change_description="The new artifact, state effect, or goal change expected from this block.",
         )
-    if config.runtime.graph_adaptation_mode == "online":
-        spec = copy.deepcopy(BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC)
-        spec["function"]["parameters"]["properties"]["code"]["description"] += (
-            " Typed research-graph functions declared in the system contract are available inside "
-            "the program. Semantic graph updates are source-verified by the runtime."
-        )
-        properties = spec["function"]["parameters"]["properties"]
-        properties["constraint_id"] = {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stable id for the semantic task constraint targeted by this block.",
-        }
-        properties["constraint"] = {
-            "type": "string",
-            "minLength": 1,
-            "description": "Task-level relation or fact this block is intended to resolve.",
-        }
-        properties["research_updates"] = {
-            "type": "object",
-            "description": (
-                "Additional semantic graph updates known before this block. Evidence must quote "
-                "a document fetched by an earlier block; newly fetched evidence can be committed "
-                "inside code with graph_add_evidence."
-            ),
-            "properties": {
-                "constraints": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "minLength": 1},
-                            "description": {"type": "string", "minLength": 1},
-                        },
-                        "required": ["id", "description"],
-                        "additionalProperties": False,
-                    },
-                },
-                "candidates": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "minLength": 1},
-                            "label": {"type": "string", "minLength": 1},
-                        },
-                        "required": ["id", "label"],
-                        "additionalProperties": False,
-                    },
-                },
-                "evidence": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "minLength": 1},
-                            "docid": {"type": "string", "minLength": 1},
-                            "quote": {"type": "string", "minLength": 1},
-                            "relation": {
-                                "type": "string",
-                                "enum": ["supports", "refutes"],
-                            },
-                            "target_id": {"type": "string", "minLength": 1},
-                            "constraint_id": {"type": "string"},
-                        },
-                        "required": ["id", "docid", "quote", "relation", "target_id"],
-                        "additionalProperties": False,
-                    },
-                },
-            },
-            "required": ["constraints", "candidates", "evidence"],
-            "additionalProperties": False,
-        }
-        properties["task_graph"] = {
-            "type": "object",
-            "description": (
-                "One-time task decomposition for the first PTC block. Omit on later blocks. "
-                "Requirements must be independently verifiable; depends_on contains requirement ids."
-            ),
-            "properties": {
-                "requirements": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "minLength": 1},
-                            "description": {"type": "string", "minLength": 1},
-                            "depends_on": {
-                                "type": "array",
-                                "items": {"type": "string", "minLength": 1},
-                            },
-                        },
-                        "required": ["id", "description", "depends_on"],
-                        "additionalProperties": False,
-                    },
-                }
-            },
-            "required": ["requirements"],
-            "additionalProperties": False,
-        }
-        return extend_ptc_spec_with_graph_control(
-            spec,
-            include_input_artifacts=False,
-            action_description="The explicit Adapt action implemented by this PTC block.",
-            target_description="An existing graph node id; use task for the initial block.",
-            expected_change_description=(
-                "The graph state change this block is intended to produce."
-            ),
-            extra_properties={
-                key: value
-                for key, value in properties.items()
-                if key in {"constraint_id", "constraint", "research_updates", "task_graph"}
-            },
-        )
-    if config.runtime.graph_progress_mode in {"off", "placebo_auto", "graph_auto"}:
-        return BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC
-    if config.runtime.graph_progress_mode not in {"placebo", "graph"}:
-        raise ValueError(
-            "runtime.graph_progress_mode must be one of off, placebo, graph, placebo_auto, graph_auto"
-        )
-    spec = copy.deepcopy(BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC)
-    spec["function"]["parameters"]["properties"]["code"]["description"] += (
-        " A bounded read-only graph_progress() function is also available inside the program; "
-        "it returns fixed-schema progress counters and does not call search or fetch."
-    )
-    return spec
+    return BROWSECOMP_PLUS_ORIGINAL_PTC_TOOL_SPEC
 
 
 def _runtime_tool_manifest(
@@ -1284,54 +803,24 @@ def _runtime_tool_manifest(
     _validate_control_modes(config)
     if config.browsecomp_plus.prompt_variant == "direct-tools-v1":
         return ()
-    if config.runtime.graph_adaptation_mode == "generic":
-        return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
-    if config.runtime.graph_adaptation_mode == "online":
-        return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST + GRAPH_ADAPT_RUNTIME_TOOL_MANIFEST
-    if config.runtime.graph_progress_mode in {"off", "placebo_auto", "graph_auto"}:
-        return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
-    if config.runtime.graph_progress_mode not in {"placebo", "graph"}:
-        raise ValueError(
-            "runtime.graph_progress_mode must be one of off, placebo, graph, placebo_auto, graph_auto"
-        )
-    return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST + (
-        {
-            "name": "graph_progress",
-            "description": (
-                "Return a bounded, read-only snapshot of search/fetch progress. It has no external "
-                "side effects and does not alter tool results or stopping."
-            ),
-            "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
-            "allowed_callers": ["programmatic_tool_call"],
-        },
-    )
+    return BROWSECOMP_PLUS_RUNTIME_TOOL_MANIFEST
 
 
 def _validate_control_modes(config: ExperimentConfig) -> None:
     adaptation_mode = config.runtime.graph_adaptation_mode
-    if adaptation_mode not in {"off", "online", "generic"}:
-        raise ValueError("runtime.graph_adaptation_mode must be one of off, online, generic")
-    if adaptation_mode in {"online", "generic"} and config.runtime.graph_progress_mode != "off":
-        raise ValueError(
-            "graph adaptation requires graph_progress_mode=off"
-        )
+    if adaptation_mode not in {"off", "generic"}:
+        raise ValueError("runtime.graph_adaptation_mode must be one of off, generic")
     if (
-        adaptation_mode in {"online", "generic"}
+        adaptation_mode == "generic"
         and config.browsecomp_plus.prompt_variant == "direct-tools-v1"
     ):
         raise ValueError("graph adaptation currently requires a PTC prompt variant")
-    if adaptation_mode == "generic" and config.runtime.graph_answer_review:
-        raise ValueError("generic graph adaptation does not use a separate answer reviewer")
 
 
 def _demonstration_messages(
     config: ExperimentConfig,
 ) -> tuple[dict[str, Any], ...]:
     variant = config.browsecomp_plus.prompt_variant
-    if variant == "fewshot-ptc-graph-v2":
-        if config.runtime.graph_adaptation_mode != "online":
-            return PTC_FEW_SHOT_MESSAGES
-        return _graph_v2_demonstration_messages()
     if variant == "fewshot-ptc-v1":
         if config.runtime.graph_adaptation_mode == "generic":
             messages = copy.deepcopy(PTC_FEW_SHOT_MESSAGES)
@@ -1349,421 +838,8 @@ def _demonstration_messages(
                     )
                     function["arguments"] = json.dumps(arguments)
             return tuple(messages)
-        if config.runtime.graph_adaptation_mode != "online":
-            return PTC_FEW_SHOT_MESSAGES
-        messages = copy.deepcopy(PTC_FEW_SHOT_MESSAGES)
-        for message in messages:
-            for call in message.get("tool_calls", ()):
-                function = call.get("function", {})
-                if function.get("name") != "programmatic_tool_call":
-                    continue
-                arguments = json.loads(function["arguments"])
-                arguments.update(
-                    {
-                        "action": "CONTINUE",
-                        "target": (
-                            "constraint:inspection"
-                            if call["id"] == "demo_batch_filter"
-                            else "constraint:larch-output"
-                        ),
-                        "expected_change": "resolve the demonstrated task constraints",
-                        "constraint_id": (
-                            "inspection"
-                            if call["id"] == "demo_batch_filter"
-                            else "larch-output"
-                        ),
-                        "constraint": (
-                            "candidate passed inspection"
-                            if call["id"] == "demo_batch_filter"
-                            else "verified Larch output"
-                        ),
-                        "research_updates": {
-                            "constraints": (
-                                [
-                                    {
-                                        "id": "inspection",
-                                        "description": "candidate passed inspection",
-                                    },
-                                    {
-                                        "id": "coolant",
-                                        "description": "candidate stored coolant K7",
-                                    },
-                                ]
-                                if call["id"] == "demo_batch_filter"
-                                else [
-                                    {
-                                        "id": "larch-output",
-                                        "description": "verified Larch output",
-                                    },
-                                    {
-                                        "id": "rowan-output",
-                                        "description": "verified Rowan output",
-                                    },
-                                ]
-                            ),
-                            "candidates": [],
-                            "evidence": [],
-                        },
-                    }
-                )
-                arguments["code"] = _adaptation_demo_code(
-                    arguments["code"], call["id"]
-                )
-                function["arguments"] = json.dumps(arguments)
-        return _adaptation_followup_demos(messages)
+        return PTC_FEW_SHOT_MESSAGES
     return ()
-
-
-def _graph_v2_demonstration_messages() -> tuple[dict[str, Any], ...]:
-    normal = copy.deepcopy(list(PTC_FEW_SHOT_MESSAGES[:4]))
-    normal_call = normal[1]["tool_calls"][0]["function"]
-    normal_arguments = json.loads(normal_call["arguments"])
-    normal_arguments.update(
-        {
-            "action": "CONTINUE",
-            "target": "task",
-            "expected_change": "cover both depot eligibility requirements",
-            "constraint_id": "inspection",
-            "constraint": "candidate passed inspection",
-            "research_updates": {
-                "constraints": [],
-                "candidates": [],
-                "evidence": [],
-            },
-            "task_graph": {
-                "requirements": [
-                    {
-                        "id": "inspection",
-                        "description": "candidate passed inspection",
-                        "depends_on": [],
-                    },
-                    {
-                        "id": "coolant",
-                        "description": "candidate stored coolant K7",
-                        "depends_on": [],
-                    },
-                ]
-            },
-        }
-    )
-    normal_arguments["code"] = _adaptation_demo_code(
-        normal_arguments["code"], "demo_batch_filter"
-    )
-    normal_call["arguments"] = json.dumps(normal_arguments)
-    normal[2]["content"] = str(normal[2]["content"]) + (
-        "\n\nGRAPH_DELTA "
-        '{"actual_delta":{"realized":true,"covered_requirements":'
-        '["requirement:inspection","requirement:coolant"]},'
-        '"frontier":{"unresolved_constraints":[],"conflicted_candidates":[]}}'
-    )
-
-    conflict = [
-        {
-            "role": "user",
-            "content": (
-                "Answer the following question using the research environment when evidence is "
-                "needed.\n\n<question>Which nominee, Amber or Boreal, received the verified "
-                "Northstar award?</question>\n\nReturn the final concise answer inside <result> "
-                "and </result> tags."
-            ),
-        },
-        _graph_v2_call(
-            call_id="demo_conflict_search",
-            action="CONTINUE",
-            target="task",
-            expected_change="identify the nominee and verify the award relation",
-            constraint_id="award",
-            constraint="candidate received the verified Northstar award",
-            code=(
-                "pages = []\n"
-                "for hit in search(query='Amber Boreal Northstar verified award'):\n"
-                "    pages.append(fetch(docid=hit['docid']))\n"
-                "print([{'docid': page['docid'], 'text': page['content'][-180:]} "
-                "for page in pages])"
-            ),
-            task_graph={
-                "requirements": [
-                    {
-                        "id": "identity",
-                        "description": "nominee identity is unambiguous",
-                        "depends_on": [],
-                    },
-                    {
-                        "id": "award",
-                        "description": "candidate received the verified Northstar award",
-                        "depends_on": ["identity"],
-                    },
-                ]
-            },
-        ),
-        {
-            "role": "tool",
-            "tool_call_id": "demo_conflict_search",
-            "content": (
-                "Fetched reports support Boreal and contain conflicting references to Amber.\n\n"
-                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},\"frontier\":"
-                "{\"conflicted_candidates\":[\"candidate:amber\"],"
-                "\"unresolved_constraints\":[\"requirement:award\"]}}"
-            ),
-        },
-        _graph_v2_call(
-            call_id="demo_conflict_inspect",
-            action="INSPECT",
-            target="candidate:amber",
-            expected_change="resolve the candidate conflict from verified support and refutation",
-            constraint_id="award",
-            constraint="candidate received the verified Northstar award",
-            code="print(graph_alternatives(target_id='candidate:amber'))",
-        ),
-        {
-            "role": "tool",
-            "tool_call_id": "demo_conflict_inspect",
-            "content": (
-                "{'candidates':[{'label':'Amber','supports':1,'refutes':1},"
-                "{'label':'Boreal','supports':2,'refutes':0}]}\n\n"
-                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},"
-                "\"frontier\":{\"conflicted_candidates\":[],"
-                "\"unresolved_constraints\":[]}}"
-            ),
-        },
-        {"role": "assistant", "content": "<result>Boreal</result>"},
-    ]
-
-    repair = [
-        {
-            "role": "user",
-            "content": (
-                "Answer the following question using the research environment when evidence is "
-                "needed.\n\n<question>What verified output is listed for Cedar station?</question>"
-                "\n\nReturn the final concise answer inside <result> and </result> tags."
-            ),
-        },
-        _graph_v2_call(
-            call_id="demo_failed_fetch",
-            action="CONTINUE",
-            target="task",
-            expected_change="fetch the Cedar station record",
-            constraint_id="cedar-output",
-            constraint="verified Cedar station output",
-            code=(
-                "cedar_hits = search(query='Cedar station verified output')\n"
-                "print(fetch(docid=cedar_hits[0]['id']))"
-            ),
-            task_graph={
-                "requirements": [
-                    {
-                        "id": "cedar-output",
-                        "description": "verified Cedar station output",
-                        "depends_on": [],
-                    }
-                ]
-            },
-        ),
-        {
-            "role": "tool",
-            "tool_call_id": "demo_failed_fetch",
-            "content": (
-                "PTC_ERROR {\"stage\":\"execution\",\"error_type\":\"KeyError\","
-                "\"message\":\"id\"}\n\nGRAPH_DELTA {\"actual_delta\":"
-                "{\"realized\":false},\"diagnosis\":\"execution failure\","
-                "\"valid_actions\":[\"PATCH\"]}"
-            ),
-        },
-        _graph_v2_call(
-            call_id="demo_repaired_fetch",
-            action="PATCH",
-            target="task",
-            expected_change="re-execute the fetch with the valid docid field",
-            constraint_id="cedar-output",
-            constraint="verified Cedar station output",
-            code="cedar_page = fetch(docid=cedar_hits[0]['docid'])\nprint(cedar_page)",
-        ),
-        {
-            "role": "tool",
-            "tool_call_id": "demo_repaired_fetch",
-            "content": (
-                "{'docid':'cedar-record','content':'Cedar station verified output: 31'}\n\n"
-                "GRAPH_DELTA {\"actual_delta\":{\"realized\":true},"
-                "\"frontier\":{\"unresolved_constraints\":[]}}"
-            ),
-        },
-        {"role": "assistant", "content": "<result>31</result>"},
-    ]
-    return tuple(normal + conflict + repair)
-
-
-def _graph_v2_call(
-    *,
-    call_id: str,
-    action: str,
-    target: str,
-    expected_change: str,
-    constraint_id: str,
-    constraint: str,
-    code: str,
-    task_graph: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    arguments: dict[str, Any] = {
-        "code": code,
-        "action": action,
-        "target": target,
-        "expected_change": expected_change,
-        "constraint_id": constraint_id,
-        "constraint": constraint,
-        "research_updates": {"constraints": [], "candidates": [], "evidence": []},
-    }
-    if task_graph is not None:
-        arguments["task_graph"] = task_graph
-    return {
-        "role": "assistant",
-        "content": (
-            f"I will {action.lower()} on {target} and verify the declared graph change."
-        ),
-        "tool_calls": [
-            {
-                "id": call_id,
-                "type": "function",
-                "function": {
-                    "name": "programmatic_tool_call",
-                    "arguments": json.dumps(arguments),
-                },
-            }
-        ],
-    }
-
-
-def _adaptation_demo_code(code: str, call_id: str) -> str:
-    if call_id == "demo_batch_filter":
-        code = (
-            "graph_add_constraint(constraint_id='inspection', "
-            "description='candidate passed inspection')\n"
-            "graph_add_constraint(constraint_id='coolant', "
-            "description='candidate stored coolant K7')\n"
-            + code
-        )
-        return code.replace(
-            'records.append({"docid": hit["docid"], "evidence": page["content"][-240:]})',
-            'candidate_id = depot.lower()\n'
-            '        graph_add_candidate(candidate_id=candidate_id, label=depot)\n'
-            '        inspection = re.search(r"inspection passed", page["content"], re.I)\n'
-            '        coolant = re.search(r"coolant k7", page["content"], re.I)\n'
-            '        graph_add_evidence(evidence_id=f"{candidate_id}-inspection", '
-            'docid=hit["docid"], quote=inspection.group(0), relation="supports", '
-            'target_id=f"candidate:{candidate_id}", constraint_id="constraint:inspection")\n'
-            '        graph_add_evidence(evidence_id=f"{candidate_id}-coolant", '
-            'docid=hit["docid"], quote=coolant.group(0), relation="supports", '
-            'target_id=f"candidate:{candidate_id}", constraint_id="constraint:coolant")\n'
-            '        records.append({"docid": hit["docid"], "evidence": page["content"][-240:]})',
-        ).replace("import json\n", "import json, re\n", 1)
-    if call_id == "demo_join_sum":
-        code = (
-            "graph_add_constraint(constraint_id='larch-output', "
-            "description='verified Larch output')\n"
-            "graph_add_constraint(constraint_id='rowan-output', "
-            "description='verified Rowan output')\n"
-            + code
-        )
-        code = code.replace(
-            "values[station] = int(match.group(1))\n            break",
-            "values[station] = int(match.group(1))\n"
-            "            constraint_id = station.lower() + '-output'\n"
-            "            graph_add_evidence(evidence_id=constraint_id, "
-            "docid=hit['docid'], quote=match.group(0), relation='supports', "
-            "target_id='constraint:' + constraint_id)\n"
-            "            break",
-        )
-        return code.replace(
-            'print(json.dumps({"values": values, "total": sum(values.values())}, ensure_ascii=False))',
-            'total = sum(values.values())\n'
-            'graph_add_candidate(candidate_id="total", label=str(total))\n'
-            'print(json.dumps({"values": values, "total": total}, ensure_ascii=False))',
-        )
-    return code
-
-
-def _adaptation_followup_demos(messages: list[dict[str, Any]]) -> tuple[dict[str, Any], ...]:
-    expanded: list[dict[str, Any]] = []
-    for message in messages:
-        current = copy.deepcopy(message)
-        if current.get("role") == "tool":
-            current["content"] = (
-                str(current.get("content", ""))
-                + "\n\nGRAPH_DELTA {\"research_graph_delta\":{\"frontier\":"
-                + "{\"unresolved_constraints\":[],\"conflicted_candidates\":[],"
-                + "\"reusable_artifacts\":[\"artifact:search:1\"]}}}"
-            )
-        expanded.append(current)
-        call_id = str(current.get("tool_call_id", ""))
-        if call_id == "demo_batch_filter":
-            expanded.extend(
-                _adaptation_followup_call(
-                    call_id="demo_graph_inspect",
-                    action="INSPECT",
-                    target="candidate:bracken",
-                    expected_change="verify the support path for Bracken",
-                    constraint_id="inspection",
-                    constraint="candidate passed inspection",
-                    code="print(graph_trace(node_id='candidate:bracken'))",
-                    output="{'node': {'id': 'candidate:bracken', 'kind': 'CANDIDATE'}}",
-                )
-            )
-        elif call_id == "demo_join_sum":
-            expanded.extend(
-                _adaptation_followup_call(
-                    call_id="demo_graph_reuse",
-                    action="REUSE_REPLAY",
-                    target="artifact:search:1",
-                    expected_change="reuse the first search result without another external call",
-                    constraint_id="larch-output",
-                    constraint="verified Larch output",
-                    code="print(graph_load_artifact(artifact_id='artifact:search:1'))",
-                    output="[{'docid': 'larch-output-record'}]",
-                )
-            )
-    return tuple(expanded)
-
-
-def _adaptation_followup_call(
-    *,
-    call_id: str,
-    action: str,
-    target: str,
-    expected_change: str,
-    constraint_id: str,
-    constraint: str,
-    code: str,
-    output: str,
-) -> list[dict[str, Any]]:
-    arguments = {
-        "code": code,
-        "action": action,
-        "target": target,
-        "expected_change": expected_change,
-        "constraint_id": constraint_id,
-        "constraint": constraint,
-        "research_updates": {"constraints": [], "candidates": [], "evidence": []},
-    }
-    return [
-        {
-            "role": "assistant",
-            "content": "I will use the graph state before deciding whether more retrieval is needed.",
-            "tool_calls": [
-                {
-                    "id": call_id,
-                    "type": "function",
-                    "function": {
-                        "name": "programmatic_tool_call",
-                        "arguments": json.dumps(arguments),
-                    },
-                }
-            ],
-        },
-        {
-            "role": "tool",
-            "tool_call_id": call_id,
-            "content": output + "\n\nGRAPH_DELTA {\"verified\":true}",
-        },
-    ]
 
 
 def _retriever_metadata(config: ExperimentConfig) -> dict[str, Any]:
@@ -1815,14 +891,11 @@ def _implementation_sha256() -> str:
         "persistent_runtime.py",
         "persistent_worker.py",
         "direct_tool_agent.py",
-        "exact_reuse.py",
         "episode_graph.py",
         "execution_projection.py",
         "graph_agent.py",
         "goal_adaptation.py",
         "tool_effects.py",
-        "online_adaptation.py",
-        "research_graph.py",
     ):
         digest.update(name.encode())
         digest.update((package_dir / name).read_bytes())
@@ -1839,15 +912,9 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         return None
     actions: Counter[str] = Counter()
     interfaces: Counter[str] = Counter()
-    diagnoses: Counter[str] = Counter()
     requirement_states: Counter[str] = Counter()
     for value in values:
         actions.update(value.get("action_distribution") or {})
-        diagnoses.update(
-            str(item["diagnosis"])
-            for item in value.get("action_history", ())
-            if item.get("diagnosis")
-        )
         graph = value.get("research_graph") or {}
         interfaces.update(graph.get("interface_calls") or {})
         requirement_states.update(graph.get("requirement_states") or {})
@@ -1855,7 +922,6 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         "episodes": len(values),
         "observation_calls": sum(int(value.get("observation_calls", 0)) for value in values),
         "action_distribution": dict(actions),
-        "diagnosis_distribution": dict(diagnoses),
         "task_graph_initialized_episodes": sum(
             bool((value.get("research_graph") or {}).get("task_graph_initialized"))
             for value in values
@@ -1870,38 +936,18 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         "invalid_action_targets": sum(
             int(value.get("invalid_action_targets", 0)) for value in values
         ),
-        "rejected_research_updates": sum(
-            int(value.get("rejected_research_updates", 0)) for value in values
-        ),
         "aligned_actions": sum(
             int(value.get("aligned_actions", 0)) for value in values
         ),
         "misaligned_actions": sum(
             int(value.get("misaligned_actions", 0)) for value in values
         ),
-        "selection_mismatches": sum(
-            int(value.get("selection_mismatches", 0)) for value in values
-        ),
-        "policy_overrides": sum(
-            int(value.get("policy_overrides", 0)) for value in values
-        ),
-        "program_overrides": sum(
-            int(value.get("program_overrides", 0)) for value in values
-        ),
-        "unavailable_action_requests": sum(
-            int(value.get("unavailable_action_requests", 0)) for value in values
-        ),
-        "retrieval_memory_consumption": _sum_graph_memory_metrics(values),
         "node_count": sum(
             int((value.get("research_graph") or {}).get("node_count", 0))
             for value in values
         ),
         "edge_count": sum(
             int((value.get("research_graph") or {}).get("edge_count", 0))
-            for value in values
-        ),
-        "verified_evidence": sum(
-            int((value.get("research_graph") or {}).get("verified_evidence", 0))
             for value in values
         ),
         "artifact_count": sum(
@@ -1913,28 +959,8 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
             for value in values
         ),
         "interface_calls": dict(interfaces),
-    }
-
-
-def _sum_graph_memory_metrics(values: list[dict[str, Any]]) -> dict[str, int]:
-    keys = (
-        "visible_blocks",
-        "target_matched_blocks",
-        "target_mismatch_blocks",
-        "searches_after_exposure",
-        "differentiated_queries",
-        "exposed_query_repeats",
-        "known_document_fetches",
-        "exposed_artifact_reuses",
-        "aligned_blocks",
-        "repeat_only_blocks",
-    )
-    return {
-        key: sum(
-            int((value.get("retrieval_memory_consumption") or {}).get(key, 0))
-            for value in values
-        )
-        for key in keys
+        "tool_reuse_hits": sum(int(value.get("tool_reuse_hits", 0)) for value in values),
+        "artifact_loads": sum(int(value.get("artifact_loads", 0)) for value in values),
     }
 
 

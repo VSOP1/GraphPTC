@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from graphptc.codeact_agent import CodeActPTCAgent
 from graphptc.config import RuntimeConfig
 from graphptc.model import ModelTurn, TokenUsage, ToolCall
 from graphptc.observability import ExecutionObserver, InMemoryEventSink
-from graphptc.online_adaptation import OnlineGraphAdaptation
 from graphptc.persistent_runtime import PersistentIpcRuntime
 
 
@@ -169,52 +167,6 @@ def test_persistent_runtime_preserves_unicode_without_desynchronizing() -> None:
     assert second.stdout.strip() == "still synchronized"
 
 
-def test_codeact_agent_reuses_state_and_returns_structured_observation() -> None:
-    tools = FakeLocalTools()
-    model = ScriptedModel(
-        [
-            tool_turn(
-                "call-1",
-                "hits = search(query='alpha')\nprint(hits[0]['docid'])",
-            ),
-            tool_turn(
-                "call-2",
-                "page = fetch(docid=hits[0]['docid'])\nprint(page['content'])",
-            ),
-            answer_turn(),
-        ]
-    )
-    agent = CodeActPTCAgent(
-        model=model,
-        search_tools=tools,  # type: ignore[arg-type]
-        runtime=RuntimeConfig(max_turns=4, max_ptc_blocks=3),
-        runtime_functions=(tools.search, tools.fetch),
-        structured_observation=True,
-    )
-
-    result = agent.run("test")
-
-    assert result.status == "success"
-    assert [block.success for block in result.blocks] == [True, True]
-    first = json.loads(result.blocks[0].stdout.removeprefix("PTC_OBSERVATION "))
-    second = json.loads(result.blocks[1].stdout.removeprefix("PTC_OBSERVATION "))
-    assert first["new_docids"] == ["doc-alpha"]
-    assert first["state"]["hits"] == "list"
-    assert second["repeated_docids"] == ["doc-alpha"]
-    assert "content for doc-alpha" in second["stdout"]
-    assert model.messages_seen[1][-1]["content"].startswith("PTC_OBSERVATION ")
-    assert result.runtime_session == {
-        "persistent": True,
-        "process_starts": 1,
-        "executions": 2,
-        "timeouts": 0,
-        "protocol_errors": 0,
-        "tool_calls": 2,
-        "closed": True,
-        "state": {"hits": "list", "page": "dict"},
-    }
-
-
 def test_codeact_agent_raw_stdout_preserves_persistent_state_and_truncation() -> None:
     tools = FakeLocalTools()
     model = ScriptedModel(
@@ -229,7 +181,6 @@ def test_codeact_agent_raw_stdout_preserves_persistent_state_and_truncation() ->
         search_tools=tools,  # type: ignore[arg-type]
         runtime=RuntimeConfig(max_turns=4, max_ptc_blocks=3, max_stdout_chars=240),
         runtime_functions=(tools.search, tools.fetch),
-        structured_observation=False,
     )
 
     result = agent.run("test")
@@ -244,92 +195,6 @@ def test_codeact_agent_raw_stdout_preserves_persistent_state_and_truncation() ->
     assert model.messages_seen[1][-1]["content"] == first.stdout
     assert model.messages_seen[2][-1]["content"] == second.stdout
     assert "PTC_OBSERVATION" not in first.stdout + second.stdout
-
-
-def test_active_repair_replaces_error_observation_and_runtime_state() -> None:
-    tools = FakeLocalTools()
-    model = ScriptedModel(
-        [
-            tool_turn("call-1", "items = [1]\nprint(missing)"),
-            tool_turn("call-2", "items.append(2)\nprint(sum(items))"),
-            answer_turn(),
-        ]
-    )
-    sink = InMemoryEventSink()
-    observer = ExecutionObserver(sink, episode_id="active", task_id="active")
-    calls = 0
-
-    def repair(block_id: str, runtime: PersistentIpcRuntime) -> dict[str, Any]:
-        nonlocal calls
-        calls += 1
-        assert block_id == "active:block:1"
-        runtime.close()
-        execution = runtime.execute("items = [1]\nprint('repaired')", timeout=5)
-        return {
-            "status": "repaired_active",
-            "patched_code": "items = [1]\nprint('repaired')",
-            "output": execution.stdout,
-            "replay": {"executed_tool_call_count": 0},
-        }
-
-    agent = CodeActPTCAgent(
-        model=model,
-        search_tools=tools,  # type: ignore[arg-type]
-        runtime=RuntimeConfig(max_turns=4, max_ptc_blocks=3),
-        runtime_functions=(tools.search, tools.fetch),
-        observer=observer,
-        active_repair_callback=repair,
-    )
-
-    result = agent.run("test")
-
-    assert result.status == "success"
-    assert calls == 1
-    assert model.messages_seen[1][-1]["content"] == "repaired\n"
-    assert result.blocks[0].success is True
-    assert result.blocks[1].stdout == "3\n"
-    repairs = [event for event in sink.events if event["type"] == "repair.finished"]
-    assert len(repairs) == 1
-    assert repairs[0]["data"]["status"] == "repaired_active"
-
-
-def test_active_repair_preserves_stdout_truncation_contract() -> None:
-    tools = FakeLocalTools()
-    model = ScriptedModel(
-        [
-            tool_turn("call-1", "print(missing)"),
-            answer_turn(),
-        ]
-    )
-    observer = ExecutionObserver(
-        InMemoryEventSink(), episode_id="active-cap", task_id="active-cap"
-    )
-
-    def repair(block_id: str, runtime: PersistentIpcRuntime) -> dict[str, Any]:
-        return {
-            "status": "repaired_active",
-            "patched_code": "print('x' * 500)",
-            "output": "x" * 501,
-            "replay": {"executed_tool_call_count": 0},
-        }
-
-    agent = CodeActPTCAgent(
-        model=model,
-        search_tools=tools,  # type: ignore[arg-type]
-        runtime=RuntimeConfig(max_turns=3, max_ptc_blocks=2, max_stdout_chars=240),
-        runtime_functions=(tools.search, tools.fetch),
-        observer=observer,
-        active_repair_callback=repair,
-    )
-
-    result = agent.run("test")
-
-    assert len(model.messages_seen[1][-1]["content"]) == 240
-    assert model.messages_seen[1][-1]["content"].startswith(
-        "PTC_STDOUT_TRUNCATED "
-    )
-    assert result.blocks[0].stdout_chars == 501
-    assert result.blocks[0].stdout_truncated is True
 
 
 def test_separate_persistent_runtimes_do_not_share_state() -> None:
@@ -355,74 +220,3 @@ def test_timeout_kills_session_and_next_block_starts_clean() -> None:
 
     assert timed_out.timed_out is True
     assert restarted.stdout.strip() == "False"
-
-
-def test_online_graph_adaptation_exposes_and_executes_model_selected_inspect() -> None:
-    tools = FakeLocalTools()
-    model = ScriptedModel(
-        [
-            tool_turn(
-                "call-1",
-                "print(graph_add_constraint(constraint_id='identity', "
-                "description='identify alpha')); print(search(query='alpha'))",
-                action="CONTINUE",
-                target="task",
-                expected_change="create and investigate the identity constraint",
-            ),
-            tool_turn(
-                "call-2",
-                "print(search(query='alpha'))",
-                action="CONTINUE",
-                target="constraint:identity",
-                expected_change="retry the identity search",
-            ),
-            tool_turn(
-                "call-3",
-                "print(graph_trace(node_id='constraint:identity'))",
-                action="INSPECT",
-                target="constraint:identity",
-                expected_change="inspect the existing research branch",
-            ),
-            answer_turn(),
-        ]
-    )
-    adaptation = OnlineGraphAdaptation(tools, max_tool_calls=10)
-    agent = CodeActPTCAgent(
-        model=model,
-        search_tools=tools,  # type: ignore[arg-type]
-        runtime=RuntimeConfig(max_turns=5, max_ptc_blocks=4),
-        runtime_functions=(
-            adaptation.search,
-            adaptation.fetch,
-            adaptation.graph_add_constraint,
-            adaptation.graph_add_candidate,
-            adaptation.graph_add_evidence,
-            adaptation.graph_frontier,
-            adaptation.graph_trace,
-            adaptation.graph_load_artifact,
-        ),
-        block_observation_factory=adaptation.observe,
-        ptc_call_metadata_callback=adaptation.prepare_program_action,
-        adaptation_initial_observation=adaptation.initial_observation,
-    )
-
-    result = agent.run("test")
-    adaptation.finish(answered=result.status == "success")
-
-    assert result.status == "success"
-    assert any(
-        "GRAPH_DELTA " in message.get("content", "")
-        for request in model.messages_seen
-        for message in request
-        if isinstance(message.get("content"), str)
-    )
-    assert "constraint:identity" in result.blocks[2].stdout
-    assert len(tools.calls) == 2
-    assert adaptation.telemetry()["action_distribution"] == {
-        "CONTINUE": 2,
-        "INSPECT": 1,
-        "ANSWER": 1,
-    }
-    graph = adaptation.telemetry()["research_graph"]
-    assert graph["interface_calls"]["graph_trace"] == 1
-    assert result.model_requests == 4

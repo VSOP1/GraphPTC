@@ -36,10 +36,7 @@ finalization_max_tokens = 2048
 compaction_max_tokens = 2048
 max_compactions = 0
 max_total_output_tokens = 61440
-reuse_exact_results = false
-graph_progress_mode = "off"
 graph_adaptation_mode = "generic"
-graph_answer_review = false
 
 [benchmark]
 dataset_path = "data/browsecomp_plus/pilot100-fold3.questions.jsonl"
