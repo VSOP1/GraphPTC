@@ -56,6 +56,49 @@ def test_appworld_fewshot_uses_only_outer_ptc_calls_and_graph_intent() -> None:
     assert not any("INSPECT" in json.dumps(payload) for payload in payloads)
 
 
+def test_appworld_fewshot_baseline_removes_only_graph_contract() -> None:
+    graph_prompt, graph_demonstrations = _appworld_prompt_bundle(
+        "appworld-ptc-fewshot",
+        graph_adaptation_mode="generic",
+    )
+    baseline_prompt, baseline_demonstrations = _appworld_prompt_bundle(
+        "appworld-ptc-fewshot",
+        graph_adaptation_mode="off",
+    )
+
+    assert "semantically coherent phase" in baseline_prompt
+    assert "graph-control fields" in graph_prompt
+    assert "graph-control fields" not in baseline_prompt
+    graph_payloads = [
+        json.loads(call["function"]["arguments"])
+        for message in graph_demonstrations
+        for call in message.get("tool_calls", ())
+    ]
+    baseline_payloads = [
+        json.loads(call["function"]["arguments"])
+        for message in baseline_demonstrations
+        for call in message.get("tool_calls", ())
+    ]
+    assert [payload["code"] for payload in baseline_payloads] == [
+        payload["code"] for payload in graph_payloads
+    ]
+    assert all(set(payload) == {"code"} for payload in baseline_payloads)
+    assert all(
+        "GRAPH_DELTA" not in str(message.get("content", ""))
+        for message in baseline_demonstrations
+    )
+
+    config = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+    )
+    baseline_config = replace(
+        config,
+        runtime=replace(config.runtime, graph_adaptation_mode="off"),
+    )
+    baseline_spec = _appworld_ptc_spec(baseline_config)
+    assert "action" not in baseline_spec["function"]["parameters"]["properties"]
+
+
 def test_unknown_appworld_prompt_variant_is_rejected() -> None:
     with pytest.raises(ValueError, match="unsupported AppWorld prompt variant"):
         _appworld_prompt_bundle("unknown")
@@ -78,6 +121,18 @@ def test_appworld_inspection_schema_is_explicitly_opt_in() -> None:
     inspection = enabled["function"]["parameters"]["properties"]["inspection"]
     assert inspection["required"] == ["view"]
     assert inspection["additionalProperties"] is False
+
+    with pytest.raises(ValueError, match="requires graph_adaptation_mode=generic"):
+        _appworld_ptc_spec(
+            replace(
+                config,
+                runtime=replace(
+                    config.runtime,
+                    graph_adaptation_mode="off",
+                    graph_inspection_enabled=True,
+                ),
+            )
+        )
 
 
 def test_appworld_signature_records_exact_prompt_and_dirty_source_state(

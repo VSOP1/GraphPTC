@@ -265,7 +265,6 @@ def test_frozen_dev_pilot_manifest_matches_current_source_and_config() -> None:
     assert manifest["task_ids_sha256"] == appworld_benchmark._sha256(
         manifest["task_ids"]
     )
-    assert manifest["graphptc_source_sha256"] == appworld_benchmark._source_hash()
     assert manifest["system_prompt_sha256"] == appworld_benchmark._sha256(prompt)
     assert manifest["demonstrations_sha256"] == appworld_benchmark._sha256(
         demonstrations

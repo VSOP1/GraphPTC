@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import dataclasses
 import hashlib
 import json
@@ -36,7 +37,7 @@ access files, environment variables, the shell, or external networks. AppWorld's
 execution limits apply. API/runtime failures are observations to diagnose and repair; do not claim
 completion until the required state change or answer has been produced."""
 
-APPWORLD_PTC_SEMANTIC_PROMPT = APPWORLD_SYSTEM_PROMPT + """
+APPWORLD_PTC_BASE_PROMPT = APPWORLD_SYSTEM_PROMPT + """
 
 Follow AppWorld's general operating contract. Work autonomously, never invent API names, argument
 names, IDs, credentials, or other values, and avoid changes beyond the instruction. Do not ask the
@@ -57,13 +58,17 @@ as an attempt to solve every uncertain step in one monolithic program. Put mecha
 API calls and Python loops, pagination, filtering, joins, and aggregation in the same block. Print a
 compact derived result, not raw collections or secrets. Return to the model for a new semantic
 decision, an execution failure that needs repair, or task completion. There is no fixed number of
-blocks or calls.
+blocks or calls."""
 
-The graph-control fields declare intent rather than prove progress. Use `CONTINUE` for a new task
+APPWORLD_GRAPH_GUIDANCE = """The graph-control fields declare intent rather than prove progress. Use `CONTINUE` for a new task
 effect, `PATCH` when correcting a failed block, and `REPLAN` when changing the dependency path.
 `target` names the affected graph node and `expected_change` states the observable delta. Select
 `INSPECT` only when the tool schema provides an executable inspection request; a label by itself is
 not a graph query."""
+
+APPWORLD_PTC_SEMANTIC_PROMPT = (
+    APPWORLD_PTC_BASE_PROMPT + "\n\n" + APPWORLD_GRAPH_GUIDANCE
+)
 
 APPWORLD_INSPECTION_GUIDANCE = """When `INSPECT` is available, include an `inspection` request in the
 same programmatic_tool_call. Use `frontier` for the current bounded dependency frontier or `trace`
@@ -103,28 +108,65 @@ APPWORLD_PTC_SPEC = {
 def _appworld_prompt_bundle(
     variant: str,
     *,
+    graph_adaptation_mode: str = "generic",
     graph_inspection_enabled: bool = False,
 ) -> tuple[str, tuple[dict[str, Any], ...]]:
+    _validate_control_mode(graph_adaptation_mode, graph_inspection_enabled)
     if variant == "appworld-general":
         prompt, demonstrations = APPWORLD_SYSTEM_PROMPT, ()
     elif variant == "appworld-ptc-semantics":
-        prompt, demonstrations = APPWORLD_PTC_SEMANTIC_PROMPT, ()
+        prompt, demonstrations = APPWORLD_PTC_BASE_PROMPT, ()
     elif variant == "appworld-ptc-fewshot":
-        prompt, demonstrations = APPWORLD_PTC_SEMANTIC_PROMPT, APPWORLD_PTC_FEW_SHOT_MESSAGES
+        prompt, demonstrations = APPWORLD_PTC_BASE_PROMPT, APPWORLD_PTC_FEW_SHOT_MESSAGES
     else:
         raise ValueError(f"unsupported AppWorld prompt variant: {variant!r}")
+    if graph_adaptation_mode == "generic" and variant != "appworld-general":
+        prompt += "\n\n" + APPWORLD_GRAPH_GUIDANCE
+    if graph_adaptation_mode == "off" and demonstrations:
+        demonstrations = _without_graph_demonstration_fields(demonstrations)
     if graph_inspection_enabled:
         prompt += "\n\n" + APPWORLD_INSPECTION_GUIDANCE
     return prompt, demonstrations
 
 
 def _appworld_ptc_spec(config: ExperimentConfig) -> dict[str, Any]:
+    _validate_control_mode(
+        config.runtime.graph_adaptation_mode,
+        config.runtime.graph_inspection_enabled,
+    )
+    if config.runtime.graph_adaptation_mode == "off":
+        return copy.deepcopy(APPWORLD_PTC_SPEC)
     return extend_ptc_spec_with_graph_control(
         APPWORLD_PTC_SPEC,
         include_input_artifacts=False,
         include_inspection=config.runtime.graph_inspection_enabled,
         target_description="Use `task` for this AppWorld episode.",
     )
+
+
+def _without_graph_demonstration_fields(
+    messages: Sequence[dict[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    cleaned = copy.deepcopy(tuple(messages))
+    for message in cleaned:
+        for call in message.get("tool_calls", ()):
+            function = call.get("function", {})
+            if function.get("name") != "programmatic_tool_call":
+                continue
+            arguments = json.loads(function["arguments"])
+            for name in ("action", "target", "expected_change", "inspection"):
+                arguments.pop(name, None)
+            function["arguments"] = json.dumps(arguments)
+        if message.get("role") == "tool" and isinstance(message.get("content"), str):
+            message["content"] = message["content"].split("\n\nGRAPH_DELTA ", 1)[0]
+    return cleaned
+
+
+def _validate_control_mode(mode: str, inspection_enabled: bool) -> None:
+    if mode not in {"off", "generic"}:
+        raise ValueError("runtime.graph_adaptation_mode must be one of off, generic")
+    if inspection_enabled and mode != "generic":
+        raise ValueError("graph inspection requires graph_adaptation_mode=generic")
 
 
 class EmptySearchTools:
@@ -176,6 +218,7 @@ def run_appworld_benchmark(
     app = config.appworld
     system_prompt, demonstration_messages = _appworld_prompt_bundle(
         app.prompt_variant,
+        graph_adaptation_mode=config.runtime.graph_adaptation_mode,
         graph_inspection_enabled=config.runtime.graph_inspection_enabled,
     )
     inspection = inspect_appworld(config)
@@ -234,16 +277,19 @@ def run_appworld_benchmark(
         try:
             runtime_metadata = runtime.metadata
             instruction = str(runtime_metadata["instruction"])
-            controller = GoalGraphAdaptation(
-                {},
-                {},
-                task=instruction,
-                expose_graph_api=False,
-                host_inspection_enabled=config.runtime.graph_inspection_enabled,
-            )
-            hooks = GraphAgentHooks.from_controller(controller)
-            hook_kwargs = hooks.agent_kwargs()
-            hook_kwargs["runtime_functions"] = ()
+            if config.runtime.graph_adaptation_mode == "generic":
+                controller = GoalGraphAdaptation(
+                    {},
+                    {},
+                    task=instruction,
+                    expose_graph_api=False,
+                    host_inspection_enabled=config.runtime.graph_inspection_enabled,
+                )
+                hooks = GraphAgentHooks.from_controller(controller)
+                hook_kwargs = hooks.agent_kwargs()
+                hook_kwargs["runtime_functions"] = ()
+            else:
+                hook_kwargs = {"runtime_functions": ()}
             model = OpenAIChatModel(
                 config.model,
                 config.require_api_key(config.model.api_key_env),
@@ -260,16 +306,24 @@ def run_appworld_benchmark(
                 **hook_kwargs,
             )
             agent_result = agent.run(instruction)
-            controller.finish(answered=runtime.task_completed)
+            if controller is not None:
+                controller.finish(answered=runtime.task_completed)
             try:
                 evaluation = runtime.evaluate()
             except Exception as exc:
                 evaluator_error = f"{type(exc).__name__}: {exc}"
-            graph_path = app.graph_dir / f"{task_id}.json"
-            graph_path.write_text(
-                json.dumps(controller.graph_artifact(), ensure_ascii=False, indent=2, default=repr),
-                encoding="utf-8",
-            )
+            graph_path: Path | None = None
+            if controller is not None:
+                graph_path = app.graph_dir / f"{task_id}.json"
+                graph_path.write_text(
+                    json.dumps(
+                        controller.graph_artifact(),
+                        ensure_ascii=False,
+                        indent=2,
+                        default=repr,
+                    ),
+                    encoding="utf-8",
+                )
             record = {
                 "task_id": task_id,
                 "status": "finished",
@@ -281,8 +335,8 @@ def run_appworld_benchmark(
                 "official_evaluation": evaluation,
                 "evaluator_error": evaluator_error,
                 "appworld": runtime_metadata,
-                "graph_path": str(graph_path),
-                "graph_telemetry": controller.telemetry(),
+                "graph_path": str(graph_path) if graph_path is not None else None,
+                "graph_telemetry": controller.telemetry() if controller is not None else None,
             }
         except Exception as exc:
             record = {
@@ -499,6 +553,7 @@ def _signature_payload(
     }
     system_prompt, demonstrations = _appworld_prompt_bundle(
         config.appworld.prompt_variant,
+        graph_adaptation_mode=config.runtime.graph_adaptation_mode,
         graph_inspection_enabled=config.runtime.graph_inspection_enabled,
     )
     return {
