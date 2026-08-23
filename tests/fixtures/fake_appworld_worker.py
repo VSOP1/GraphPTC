@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 
 
 def send(payload: dict[str, object]) -> None:
@@ -29,6 +30,9 @@ for line in sys.stdin:
     request_type = request["type"]
     if request_type == "execute":
         code = str(request["code"])
+        api_calls = [
+            {"method": "post", "url": "/fake/action", "data": {"code": code}}
+        ]
         if code == "counter += 1":
             state["counter"] = int(state["counter"]) + 1
             output = "Execution successful."
@@ -42,10 +46,30 @@ for line in sys.stdin:
             output = "Execution failed. Traceback:\nValueError: fake failure"
             success = False
             completed = False
+        elif code == "hang()":
+            time.sleep(1)
+            output = "Execution successful."
+            success = True
+            completed = False
         elif code == "apis.supervisor.complete_task()":
             output = "Execution successful."
             success = True
             completed = True
+        elif code == "secret()":
+            output = "Execution successful."
+            success = True
+            completed = False
+            api_calls = [
+                {
+                    "method": "post",
+                    "url": "/auth/token",
+                    "data": {
+                        "password": "plain-secret",
+                        "access_token": "token-secret",
+                        "profile": {"name": "visible"},
+                    },
+                }
+            ]
         else:
             output = code
             success = True
@@ -56,14 +80,14 @@ for line in sys.stdin:
                 "stdout": output,
                 "success": success,
                 "completed": completed,
-                "api_calls": [
-                    {"method": "post", "url": "/fake/action", "data": {"code": code}}
-                ],
+                "api_calls": api_calls,
             }
         )
     elif request_type == "evaluate":
         send({"type": "evaluation", "evaluation": {"success": bool(state["counter"])}})
     elif request_type == "close":
+        if task_id == "close-crash":
+            break
         send({"type": "closed"})
         break
     else:

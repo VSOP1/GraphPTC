@@ -64,3 +64,46 @@ def test_original_ptc_full_config_uses_frozen_runtime_budget() -> None:
     assert config.runtime.compaction_trigger_input_tokens is None
     assert config.runtime.compaction_max_tokens == 2048
     assert config.runtime.max_total_output_tokens == 61_440
+
+
+def test_appworld_prompt_challenger_configs_are_isolated() -> None:
+    semantic = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-semantics-smoke.toml"
+    )
+    fewshot = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+    )
+
+    assert semantic.appworld.prompt_variant == "appworld-ptc-semantics"
+    assert fewshot.appworld.prompt_variant == "appworld-ptc-fewshot"
+    assert semantic.appworld.experiment_name != fewshot.appworld.experiment_name
+    assert semantic.appworld.results_path != fewshot.appworld.results_path
+    assert semantic.runtime.max_stdout_chars == fewshot.runtime.max_stdout_chars == 8_000
+
+
+def test_appworld_inspection_smoke_is_explicitly_enabled() -> None:
+    config = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-inspection-smoke.toml"
+    )
+
+    assert config.runtime.graph_adaptation_mode == "generic"
+    assert config.runtime.graph_inspection_enabled is True
+    assert config.appworld.prompt_variant == "appworld-ptc-fewshot"
+
+
+def test_current_appworld_smoke_and_frozen_pilot_have_unique_namespaces() -> None:
+    smoke = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-runtime-smoke.toml"
+    )
+    pilot = ExperimentConfig.from_toml(
+        "configs/appworld.graphptc-dev-frozen-pilot.toml"
+    )
+
+    assert smoke.appworld.experiment_name == "graphptc-dev-runtime-smoke"
+    assert pilot.appworld.experiment_name == "graphptc-dev-frozen-pilot"
+    assert smoke.appworld.experiment_name != pilot.appworld.experiment_name
+    assert smoke.appworld.results_path != pilot.appworld.results_path
+    assert smoke.appworld.workers == 1
+    assert pilot.appworld.workers == 2
+    assert smoke.runtime.graph_inspection_enabled is True
+    assert pilot.runtime.graph_inspection_enabled is True

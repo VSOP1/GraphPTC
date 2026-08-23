@@ -48,6 +48,7 @@ def main() -> int:
     if request_type == "evaluate_tasks":
         from appworld.evaluator import evaluate_tasks
 
+        data_version = (root / "data" / "version.txt").read_text(encoding="utf-8").strip()
         with contextlib.redirect_stdout(sys.stderr):
             evaluation = evaluate_tasks(
                 list(request["task_ids"]),
@@ -56,7 +57,14 @@ def main() -> int:
                 include_details=True,
                 save_reports=True,
             )
-        send({"type": "aggregate_evaluation", "evaluation": evaluation})
+        send(
+            {
+                "type": "aggregate_evaluation",
+                "evaluation": evaluation,
+                "appworld_version": __version__,
+                "data_version": data_version,
+            }
+        )
         return 0
     if request_type != "initialize":
         send({"type": "error", "error": f"unknown initial request: {request_type}"})

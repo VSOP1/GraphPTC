@@ -73,6 +73,7 @@ class RuntimeConfig:
     max_compactions: int = 8
     max_total_output_tokens: int | None = None
     graph_adaptation_mode: str = "off"
+    graph_inspection_enabled: bool = False
 
 
 @dataclass(frozen=True)

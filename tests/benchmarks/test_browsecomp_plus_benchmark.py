@@ -186,10 +186,10 @@ def test_generic_graph_adaptation_keeps_domain_neutral_contract(tmp_path: Path) 
     assert parameters["required"] == ["code", "action", "expected_change"]
     assert parameters["properties"]["action"]["enum"] == [
         "CONTINUE",
-        "INSPECT",
         "PATCH",
         "REPLAN",
     ]
+    assert "inspection" not in parameters["properties"]
     system_prompt, _ = benchmark._prompt_pair(adapted)
     assert "domain-neutral effect frontier" in system_prompt
     assert "graph_add_constraint" not in system_prompt
@@ -205,6 +205,52 @@ def test_generic_graph_adaptation_keeps_domain_neutral_contract(tmp_path: Path) 
     assert benchmark._run_signature(adapted, RETRIEVER_METADATA) != benchmark._run_signature(
         config, RETRIEVER_METADATA
     )
+
+    inspecting = replace(
+        adapted,
+        runtime=replace(adapted.runtime, graph_inspection_enabled=True),
+    )
+    inspection_parameters = benchmark._ptc_tool_spec(inspecting)["function"]["parameters"]
+    assert "INSPECT" in inspection_parameters["properties"]["action"]["enum"]
+    assert inspection_parameters["properties"]["inspection"]["properties"]["view"][
+        "enum"
+    ] == ["frontier", "trace"]
+    assert benchmark._run_signature(inspecting, RETRIEVER_METADATA) != benchmark._run_signature(
+        adapted, RETRIEVER_METADATA
+    )
+
+
+def test_graph_adaptation_summary_aggregates_inspection_outcomes() -> None:
+    summary = benchmark._summarize_graph_adaptation(
+        [
+            {
+                "graph_adaptation": {
+                    "inspection": {
+                        "declared": 2,
+                        "well_formed": 1,
+                        "query_attempts": 1,
+                        "succeeded": 1,
+                        "failed": 1,
+                        "responses_emitted": 2,
+                        "results_returned": 1,
+                    },
+                    "research_graph": {},
+                }
+            }
+        ]
+    )
+
+    assert summary is not None
+    assert summary["inspection"] == {
+        "declared": 2,
+        "well_formed": 1,
+        "query_attempts": 1,
+        "succeeded": 1,
+        "failed": 1,
+        "responses_emitted": 2,
+        "results_returned": 1,
+    }
+
 
 def test_historical_online_graph_adaptation_is_rejected(tmp_path: Path) -> None:
     config = _config(tmp_path)

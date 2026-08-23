@@ -91,13 +91,17 @@ class PTCExecutionProjection:
             action_id = f"api_action:{self._block_count}:{index}"
             arguments = dict(action.get("arguments", {}))
             effect = str(action.get("effect", "read"))
+            success = action.get("success", True)
+            normalized_success = success if isinstance(success, bool) else None
             self._graph.add_node(
                 action_id,
                 "API_ACTION",
                 {
                     "name": str(action.get("name", ""))[:500],
                     "effect": effect,
-                    "success": bool(action.get("success", True)),
+                    "success": normalized_success,
+                    "outcome_unknown": bool(action.get("outcome_unknown", False)),
+                    "effect_basis": str(action.get("effect_basis", "contract"))[:100],
                 },
             )
             self._graph.add_edge("executes", block_id, action_id)
@@ -109,12 +113,16 @@ class PTCExecutionProjection:
                 data={"action": action_id},
             )
             self._graph.add_edge("consumes", input_id, action_id)
-            if effect == "write" and bool(action.get("success", True)):
+            if effect == "write" and normalized_success is True:
                 state_id = f"state_effect:{self._block_count}:{index}"
                 self._graph.add_node(
                     state_id,
                     "STATE_EFFECT",
-                    {"action": str(action.get("name", ""))[:500]},
+                    {
+                        "action": str(action.get("name", ""))[:500],
+                        "candidate": True,
+                        "effect_basis": str(action.get("effect_basis", "contract"))[:100],
+                    },
                 )
                 self._graph.add_edge("mutates", action_id, state_id)
             else:

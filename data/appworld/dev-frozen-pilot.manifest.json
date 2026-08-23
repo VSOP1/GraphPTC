@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "status": "evaluated",
+  "frozen_at": "2026-08-23T20:19:00.3942914+08:00",
+  "evaluated_at": "2026-08-23T20:26:52.5285291+08:00",
+  "benchmark": "AppWorld",
+  "split": "dev",
+  "arm": "GraphPTC",
+  "selection": "first complete three-variation scenario in official dev order not used by earlier development runs",
+  "task_ids": [
+    "4ec8de5_1",
+    "4ec8de5_2",
+    "4ec8de5_3"
+  ],
+  "task_ids_sha256": "69a76e71c5ddf26313e4c83b5e453ce445d084582fbf9dd872ac77ddbea3d836",
+  "prerequisite_smoke_task_id": "fac291d_3",
+  "appworld_code_version": "0.1.3.post1",
+  "appworld_data_version": "0.1.0",
+  "dev_dataset_sha256": "9fa976589300ea8905708257144d801d1604b06d85fb0181e381df8a3ba85001",
+  "graphptc_commit": "c8da46adf9e10f2ffd9c02fa6d42c4a3f864804a",
+  "graphptc_git_dirty": true,
+  "graphptc_source_sha256": "65b6cca1e293ca1e1360e3a5dbad8330a954285a7c3a175fd20ecd11863fdfde",
+  "config": "configs/appworld.graphptc-dev-frozen-pilot.toml",
+  "config_sha256": "4980cc7fef80198e5d3446112183988af3b89cf7f034162087d609e3a89011da",
+  "prompt_variant": "appworld-ptc-fewshot",
+  "system_prompt_sha256": "e5dda4827c18189e249b72e9612ae511f58d108a734e37970d1c698c2e2798f8",
+  "demonstrations_sha256": "41e7bd036d1ec5fb8532e07e00af4bb9a5d7fb0b29059c1db434b553a42a7ba9",
+  "tool_spec_sha256": "f453ca7811255541bd0521fc2d43bebafe4310844c6f4a6a4c710e4e98bd0687",
+  "graph_inspection_enabled": true,
+  "max_stdout_chars": 8000,
+  "workers": 2,
+  "environment_freezes": {
+    "graphptc": {
+      "path": "data/appworld/graphptc-environment.freeze.txt",
+      "sha256": "6a819e186bb20248d0a98d56244211d9663e5d0620a54add5af35a605548f051"
+    },
+    "appworld": {
+      "path": "data/appworld/appworld-environment.freeze.txt",
+      "sha256": "07f94cf5a36951b2a12f414521f8b434a9431e209f29c96345d14d507e58e2b1"
+    }
+  },
+  "expected_outputs": {
+    "results": "runs/appworld/graphptc-dev-frozen-pilot/results.jsonl",
+    "report": "runs/appworld/graphptc-dev-frozen-pilot/report.json",
+    "graphs": "runs/appworld/graphptc-dev-frozen-pilot/graphs",
+    "official_output": "/home/agent/graphptc-appworld/experiments/outputs/graphptc-dev-frozen-pilot"
+  },
+  "policy": {
+    "single_arm": true,
+    "retry_selected_failures": false,
+    "save_state_or_load_state": false,
+    "test_splits_accessed": false
+  },
+  "artifact_handling": {
+    "protected": true,
+    "public_redistribution_requires_encryption": true,
+    "raw_runs_committed": false
+  },
+  "observed": {
+    "run_signature": "85c526758f6674ee145ca09281a4e0301c3ced16ecc25bd273ae945b1cb34996",
+    "task_goal_completion": 66.7,
+    "scenario_goal_completion": 0.0,
+    "official_successes": 2,
+    "official_failures": 1,
+    "task_completed": 3,
+    "execution_failure_tasks": 3,
+    "execution_failure_blocks": 3,
+    "incomplete_tasks": 0,
+    "evaluator_failures": 0,
+    "runner_failures": 0,
+    "inspection_declared": 0,
+    "inspection_succeeded": 0,
+    "inspection_failed": 0,
+    "inspection_results_returned": 0,
+    "blocks": 22,
+    "api_calls": 130,
+    "stdout_truncations": 0,
+    "termination_confirmed_tasks": 3,
+    "artifact_sha256": {
+      "results": "c73285bb83057a60cda1441c2dd5a8113a9bdb0f40971ef2b9ae2149d5353224",
+      "report": "59e006d36df192a1a08af1f183c7508766b818a7d2660a658d9ed87114f3f2ee",
+      "graphs": {
+        "4ec8de5_1": "1e8782e49c797438afbd98ca5c72dd659a2918d508879261315cc35c3b2ff1bf",
+        "4ec8de5_2": "781e939704846595ba454d7e90d99afd6a06b7d0e84bed79fbcbe0dcf58d7635",
+        "4ec8de5_3": "7fdcf28eeacc7e22a0070d3e372c692eb7fcbfd750f3c3b48bfaab868a4926be"
+      },
+      "official_output_trees": {
+        "4ec8de5_1": "19665023e1a2f9ee2142fc80144bd03020f7c5852e6c26bbcf66f1dd90077c79",
+        "4ec8de5_2": "efaa9deca04c1350f271b7343fd70db9f3a44e5638edd2bc817de89ac5b87f42",
+        "4ec8de5_3": "97541e58a0c4f576fea7e0b2799c067f4c829f58d777c2f44d7c4e948d7e710e"
+      }
+    }
+  }
+}

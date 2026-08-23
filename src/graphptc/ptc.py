@@ -435,6 +435,14 @@ class OriginalPTCAgent:
                         result.status = "success"
                         result.finish_reason = "task_completed"
                         break
+                    fatal_runtime_error = getattr(
+                        self._program_runtime, "fatal_error", None
+                    )
+                    if trace is not None and fatal_runtime_error:
+                        result.status = "failed"
+                        result.finish_reason = "runtime_failure"
+                        result.error = f"Program runtime became unusable: {fatal_runtime_error}"
+                        break
                     if (
                         (not is_error or self._post_block_message_on_error)
                         and trace is not None
@@ -445,7 +453,11 @@ class OriginalPTCAgent:
                             messages.append(
                                 {"role": "user", "content": post_block_message}
                             )
-                if result.finish_reason in {"task_timeout", "task_completed"}:
+                if result.finish_reason in {
+                    "task_timeout",
+                    "task_completed",
+                    "runtime_failure",
+                }:
                     self._checkpoint(messages, result, turn_number + 1)
                     break
                 self._checkpoint(messages, result, turn_number + 1)

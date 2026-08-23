@@ -318,6 +318,7 @@ def run_browsecomp_plus_benchmark(
                     },
                     task=example.question,
                     expose_graph_api=False,
+                    host_inspection_enabled=config.runtime.graph_inspection_enabled,
                 )
             else:
                 graph_adaptation = None
@@ -775,6 +776,12 @@ def _prompt_pair(config: ExperimentConfig) -> tuple[str, str]:
         "offered, correct and re-execute the failed operation. Answer directly when the available "
         "results satisfy the task."
     )
+    if config.runtime.graph_inspection_enabled:
+        graph_guidance += (
+            " When INSPECT is offered, attach an inspection request with view=frontier or with "
+            "view=trace and a graph node_id. The host returns the bounded read-only result in the "
+            "current GRAPH_DELTA for use on the next model turn."
+        )
     return system_prompt + "\n\n" + graph_guidance, user_prompt
 
 
@@ -791,6 +798,7 @@ def _ptc_tool_spec(config: ExperimentConfig) -> dict[str, Any] | None:
             spec,
             include_target=False,
             include_input_artifacts=False,
+            include_inspection=config.runtime.graph_inspection_enabled,
             action_description="The graph-control intent implemented by this PTC block.",
             expected_change_description="The new artifact, state effect, or goal change expected from this block.",
         )
@@ -912,9 +920,11 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         return None
     actions: Counter[str] = Counter()
     interfaces: Counter[str] = Counter()
+    inspections: Counter[str] = Counter()
     requirement_states: Counter[str] = Counter()
     for value in values:
         actions.update(value.get("action_distribution") or {})
+        inspections.update(value.get("inspection") or {})
         graph = value.get("research_graph") or {}
         interfaces.update(graph.get("interface_calls") or {})
         requirement_states.update(graph.get("requirement_states") or {})
@@ -922,6 +932,7 @@ def _summarize_graph_adaptation(records: list[dict[str, Any]]) -> dict[str, Any]
         "episodes": len(values),
         "observation_calls": sum(int(value.get("observation_calls", 0)) for value in values),
         "action_distribution": dict(actions),
+        "inspection": dict(inspections),
         "task_graph_initialized_episodes": sum(
             bool((value.get("research_graph") or {}).get("task_graph_initialized"))
             for value in values

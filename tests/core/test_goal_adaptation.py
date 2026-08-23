@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from types import SimpleNamespace
 
 from graphptc.goal_adaptation import GoalGraphAdaptation
@@ -166,3 +167,231 @@ def test_generic_controller_projects_external_api_actions_and_state_effects() ->
     assert payload["actual_effect"]["state_changes"]
     assert any(node["kind"] == "API_ACTION" for node in graph["nodes"])
     assert any(edge["type"] == "mutates" for edge in graph["edges"])
+
+
+def test_failed_block_keeps_prior_api_outcome_unknown_without_inventing_state_effect() -> None:
+    controller = GoalGraphAdaptation({}, {}, task="Update state", expose_graph_api=False)
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {"action": "PATCH", "target": "task", "expected_change": "attempt update"}
+    )
+    trace = _trace(success=False, error_type="ValueError", error_message="later failure")
+    trace.runtime_trace = {
+        "external_actions": [
+            {
+                "name": "POST /example/items",
+                "arguments": {"method": "post", "url": "/example/items", "data": {}},
+                "effect": "write",
+                "success": None,
+                "outcome_unknown": True,
+            }
+        ]
+    }
+
+    hooks.block_observation_factory(trace)
+    graph = controller.graph_artifact()
+    action = next(node for node in graph["nodes"] if node["kind"] == "API_ACTION")
+
+    assert action["data"]["success"] is None
+    assert action["data"]["outcome_unknown"] is True
+    assert not any(node["kind"] == "STATE_EFFECT" for node in graph["nodes"])
+
+
+def test_disabled_host_inspection_is_not_offered() -> None:
+    controller = GoalGraphAdaptation(
+        {}, {}, task="Inspect dependencies", expose_graph_api=False
+    )
+
+    assessment = json.loads(controller.initial_observation().removeprefix("GRAPH_ASSESSMENT "))
+
+    assert "INSPECT" not in assessment["available_actions"]
+    assert not any(
+        item["action"] == "INSPECT" for item in assessment["action_opportunities"]
+    )
+
+
+def test_host_trace_inspection_runs_after_current_block_projection() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect dependencies",
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "INSPECT",
+            "target": "task",
+            "expected_change": "inspect the current block",
+            "inspection": {"view": "trace", "node_id": "block:1"},
+        }
+    )
+
+    payload = json.loads(hooks.block_observation_factory(_trace()).removeprefix("GRAPH_DELTA "))
+
+    assert payload["inspection_result"]["status"] == "ok"
+    assert payload["inspection_result"]["request"] == {
+        "view": "trace",
+        "node_id": "block:1",
+    }
+    assert payload["inspection_result"]["result"]["node"]["id"] == "block:1"
+    assert payload["inspection_result"]["returned"] is True
+    assert payload["action_verification"]["realized"] is True
+    telemetry = controller.telemetry()["inspection"]
+    assert telemetry == {
+        "declared": 1,
+        "well_formed": 1,
+        "query_attempts": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responses_emitted": 1,
+        "results_returned": 1,
+    }
+
+
+def test_host_frontier_returns_projected_artifacts_without_runtime_graph_api() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect dependencies",
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "INSPECT",
+            "target": "task",
+            "expected_change": "inspect the projected frontier",
+            "inspection": {"view": "frontier"},
+        }
+    )
+
+    payload = json.loads(hooks.block_observation_factory(_trace()).removeprefix("GRAPH_DELTA "))
+
+    artifacts = payload["inspection_result"]["result"]["reusable_artifacts"]
+    assert artifacts
+    assert any(value.startswith("artifact:block:1:") for value in artifacts)
+
+
+def test_host_inspection_is_bounded_stable_and_read_only() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect dependencies",
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {"action": "CONTINUE", "target": "task", "expected_change": "create block"}
+    )
+    hooks.block_observation_factory(_trace())
+    before = json.dumps(controller.graph_artifact(), sort_keys=True)
+
+    first = controller.graph_trace(node_id="block:1")
+    second = controller.graph_trace(node_id="block:1")
+    first["node"]["data"]["success"] = "mutated"
+    after = json.dumps(controller.graph_artifact(), sort_keys=True)
+
+    assert second["node"]["data"]["success"] is True
+    assert first["edges"] == second["edges"]
+    assert hashlib.sha256(before.encode()).digest() == hashlib.sha256(after.encode()).digest()
+    assert len(second["edges"]) <= 12
+
+
+def test_invalid_host_inspection_is_structured_and_unrealized() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect dependencies",
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "INSPECT",
+            "target": "task",
+            "expected_change": "inspect a missing node",
+            "inspection": {"view": "trace", "node_id": "missing"},
+        }
+    )
+
+    payload = json.loads(hooks.block_observation_factory(_trace()).removeprefix("GRAPH_DELTA "))
+
+    assert payload["inspection_result"]["status"] == "error"
+    assert "unknown graph node" in payload["inspection_result"]["error"]
+    assert payload["inspection_result"]["returned"] is False
+    assert payload["action_verification"]["realized"] is False
+    telemetry = controller.telemetry()["inspection"]
+    assert telemetry["well_formed"] == 1
+    assert telemetry["query_attempts"] == 1
+    assert telemetry["succeeded"] == 0
+    assert telemetry["failed"] == 1
+    assert telemetry["responses_emitted"] == 1
+    assert telemetry["results_returned"] == 0
+
+
+def test_host_inspection_render_is_bounded_and_keeps_useful_result_summary() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect dependencies",
+        max_observation_chars=800,
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "INSPECT",
+            "target": "missing-" + "x" * 10_000,
+            "expected_change": "inspect the current block",
+            "inspection": {"view": "trace", "node_id": "block:1"},
+        }
+    )
+
+    observation = hooks.block_observation_factory(_trace())
+    payload = json.loads(observation.removeprefix("GRAPH_DELTA "))
+
+    assert len(observation) <= 800
+    assert payload["inspection_result"]["status"] == "ok"
+    assert payload["inspection_result"]["returned"] is True
+    assert payload["inspection_result"]["result_summary"]["node"] == {
+        "id": "block:1",
+        "kind": "BLOCK",
+    }
+    assert payload["action_verification"]["realized"] is True
+
+
+def test_truncated_stdout_and_graph_delta_remain_separately_bounded_json() -> None:
+    controller = GoalGraphAdaptation(
+        {},
+        {},
+        task="Inspect a large block",
+        max_observation_chars=3_200,
+        expose_graph_api=False,
+        host_inspection_enabled=True,
+    )
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {
+            "action": "INSPECT",
+            "target": "task",
+            "expected_change": "inspect the large projected block",
+            "inspection": {"view": "frontier"},
+        }
+    )
+    trace = _trace()
+    trace.stdout = "PTC_STDOUT_TRUNCATED " + "x" * (8_000 - 21)
+
+    graph_delta = hooks.block_observation_factory(trace)
+    combined = f"{trace.stdout}\n\n{graph_delta}"
+    parsed = json.loads(combined.split("GRAPH_DELTA ", 1)[1])
+
+    assert len(trace.stdout) == 8_000
+    assert len(graph_delta) <= 3_200
+    assert parsed["inspection_result"]["status"] == "ok"
+    assert parsed["inspection_result"]["result"]["reusable_artifacts"]

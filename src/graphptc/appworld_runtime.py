@@ -34,6 +34,9 @@ class AppWorldProgramRuntime(BaseRuntime):
         self._stderr: list[str] = []
         self._lock = threading.Lock()
         self._closed = False
+        self._close_error: str | None = None
+        self._termination_confirmed = False
+        self._broken_error: str | None = None
         self._completed = False
         self._executions = 0
         self._timeouts = 0
@@ -51,25 +54,41 @@ class AppWorldProgramRuntime(BaseRuntime):
         with self._lock:
             if self._closed:
                 raise RuntimeError("AppWorld runtime is closed")
+            if self._broken_error is not None:
+                self._broken_trace(
+                    self._broken_error,
+                    failure_type="broken_runtime",
+                )
+                raise RuntimeError(
+                    f"AppWorld runtime is unusable after worker failure: {self._broken_error}"
+                )
+            self.last_execution_trace = {}
             self._ensure_process()
             self._executions += 1
-            self._send({"type": "execute", "code": code})
             try:
-                message = self._receive(timeout or self._timeout_seconds)
+                self._send({"type": "execute", "code": code})
+                execution_timeout = self._timeout_seconds if timeout is None else timeout
+                response_slack = min(5.0, max(0.25, execution_timeout * 0.02))
+                message = self._receive(execution_timeout + response_slack)
             except TimeoutError:
                 self._timeouts += 1
-                self._terminate()
+                self._mark_broken("worker timed out", failure_type="timeout")
                 return CodeResult(return_code=-1, timed_out=True)
+            except (BrokenPipeError, OSError, RuntimeError, json.JSONDecodeError) as exc:
+                message_text = f"{type(exc).__name__}: {exc}"
+                self._mark_broken(message_text, failure_type="worker_failure")
+                return CodeResult(stderr=message_text, return_code=1)
             if message.get("type") != "execution":
-                self._terminate()
+                error = f"AppWorld worker protocol error: {message}"
+                self._mark_broken(error, failure_type="protocol_error")
                 return CodeResult(
-                    stderr=f"AppWorld worker protocol error: {message}",
+                    stderr=error,
                     return_code=1,
                 )
             output = str(message.get("stdout", ""))
             success = bool(message.get("success", False))
             self._completed = bool(message.get("completed", False))
-            api_calls = message.get("api_calls", [])
+            api_calls = _redact_secrets(message.get("api_calls", []))
             self.last_execution_trace = {
                 "api_calls": api_calls if isinstance(api_calls, list) else [],
                 "external_actions": _external_actions(api_calls, success=success),
@@ -85,11 +104,16 @@ class AppWorldProgramRuntime(BaseRuntime):
         return self._completed
 
     @property
+    def fatal_error(self) -> str | None:
+        return self._broken_error
+
+    @property
     def metadata(self) -> dict[str, Any]:
         with self._lock:
             if self._closed:
                 raise RuntimeError("AppWorld runtime is closed")
-            self._ensure_process()
+            if not self._metadata:
+                self._ensure_process()
             return dict(self._metadata)
 
     def evaluate(self) -> dict[str, Any]:
@@ -111,18 +135,23 @@ class AppWorldProgramRuntime(BaseRuntime):
             process = self._process
             if process is None:
                 self._closed = True
+                self._termination_confirmed = True
                 return
-            if process.poll() is None:
-                try:
+            try:
+                if process.poll() is None:
                     self._send({"type": "close"})
-                    self._receive(5)
+                    message = self._receive(5)
+                    if message.get("type") != "closed":
+                        raise RuntimeError(f"AppWorld worker close protocol error: {message}")
                     process.wait(timeout=5)
-                except (BrokenPipeError, OSError, TimeoutError, subprocess.TimeoutExpired):
-                    process.kill()
-                    process.wait()
-            self._process = None
-            self._lines = None
-            self._closed = True
+                self._termination_confirmed = process.poll() is not None
+            except Exception as exc:
+                self._close_error = f"{type(exc).__name__}: {exc}"
+                self._termination_confirmed = self._terminate()
+            finally:
+                self._process = None
+                self._lines = None
+                self._closed = True
 
     def telemetry(self) -> dict[str, Any]:
         return {
@@ -133,10 +162,18 @@ class AppWorldProgramRuntime(BaseRuntime):
             "timeouts": self._timeouts,
             "task_completed": self._completed,
             "closed": self._closed,
+            "termination_confirmed": self._termination_confirmed,
+            "close_error": self._close_error,
+            "broken": self._broken_error is not None,
+            "broken_error": self._broken_error,
             "metadata": dict(self._metadata),
         }
 
     def _ensure_process(self) -> None:
+        if self._broken_error is not None:
+            raise RuntimeError(
+                f"AppWorld runtime is unusable after worker failure: {self._broken_error}"
+            )
         if self._process is not None and self._process.poll() is None:
             return
         process = subprocess.Popen(
@@ -202,13 +239,39 @@ class AppWorldProgramRuntime(BaseRuntime):
             raise RuntimeError("AppWorld worker returned a non-object message")
         return message
 
-    def _terminate(self) -> None:
+    def _terminate(self) -> bool:
         process = self._process
-        if process is not None and process.poll() is None:
-            process.kill()
-            process.wait()
-        self._process = None
-        self._lines = None
+        try:
+            if process is not None and process.poll() is None:
+                try:
+                    process.kill()
+                except (OSError, ProcessLookupError):
+                    pass
+                try:
+                    process.wait(timeout=5)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+        finally:
+            self._process = None
+            self._lines = None
+        return process is None or process.poll() is not None
+
+    def _mark_broken(self, message: str, *, failure_type: str) -> None:
+        self._broken_error = message
+        self._completed = False
+        self._broken_trace(message, failure_type=failure_type)
+        self._termination_confirmed = self._terminate()
+
+    def _broken_trace(self, message: str, *, failure_type: str) -> None:
+        self.last_execution_trace = {
+            "api_calls": [],
+            "external_actions": [],
+            "api_calls_complete": False,
+            "effects_unknown": True,
+            "completed": False,
+            "output_directory": self._metadata.get("output_directory"),
+            "failure": {"type": failure_type, "message": message},
+        }
 
 
 def _external_actions(value: Any, *, success: bool) -> list[dict[str, Any]]:
@@ -225,7 +288,40 @@ def _external_actions(value: Any, *, success: bool) -> list[dict[str, Any]]:
                 "name": f"{method.upper()} {url}".strip(),
                 "arguments": dict(call),
                 "effect": "read" if method in {"get", "head", "options"} else "write",
-                "success": success,
+                "success": True if success else None,
+                "outcome_unknown": not success,
+                "effect_basis": "http_method",
             }
         )
     return actions
+
+
+_SENSITIVE_ARGUMENT_KEYS = {
+    "api_key",
+    "authorization",
+    "cookie",
+    "password",
+    "refresh_token",
+    "secret",
+    "token",
+    "access_token",
+}
+
+
+def _redact_secrets(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            normalized = str(key).strip().lower().replace("-", "_")
+            if normalized in _SENSITIVE_ARGUMENT_KEYS or normalized.endswith(
+                ("_password", "_secret", "_token", "_api_key")
+            ):
+                redacted[str(key)] = "<redacted>"
+            else:
+                redacted[str(key)] = _redact_secrets(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_secrets(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_secrets(item) for item in value)
+    return value

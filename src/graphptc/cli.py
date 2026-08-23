@@ -136,7 +136,7 @@ def _run_command(
             restart=args.restart,
         )
         print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
-        return 0 if summary.evaluator_failures == 0 else 1
+        return 0 if summary.evaluator_failures == 0 and summary.runner_failures == 0 else 1
 
     if args.command == "evaluate-appworld":
         print(json.dumps(evaluate_appworld_benchmark(config), ensure_ascii=False, indent=2))

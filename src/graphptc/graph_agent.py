@@ -233,6 +233,7 @@ def extend_ptc_spec_with_graph_control(
     extra_properties: Mapping[str, Any] | None = None,
     include_target: bool = True,
     include_input_artifacts: bool = True,
+    include_inspection: bool = False,
     action_description: str = "The explicit graph-control action implemented by this block.",
     target_description: str = "An existing goal, action, state, or artifact node id.",
     expected_change_description: str = (
@@ -242,10 +243,13 @@ def extend_ptc_spec_with_graph_control(
     """Add domain-neutral action intent to any PTC tool schema."""
     spec = copy.deepcopy(base_spec)
     original = spec["function"]["parameters"]["properties"]
+    actions = ["CONTINUE", "PATCH", "REPLAN"]
+    if include_inspection:
+        actions.insert(1, "INSPECT")
     controls: dict[str, Any] = {
         "action": {
             "type": "string",
-            "enum": ["CONTINUE", "INSPECT", "PATCH", "REPLAN"],
+            "enum": actions,
             "description": action_description,
         },
         "expected_change": {
@@ -265,6 +269,28 @@ def extend_ptc_spec_with_graph_control(
             "type": "array",
             "items": {"type": "string", "minLength": 1},
             "description": "Existing graph artifacts intentionally consumed by this block.",
+        }
+    if include_inspection:
+        controls["inspection"] = {
+            "type": "object",
+            "properties": {
+                "view": {
+                    "type": "string",
+                    "enum": ["frontier", "trace"],
+                    "description": "The bounded read-only graph view to return after this block.",
+                },
+                "node_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Existing graph node id required by the trace view.",
+                },
+            },
+            "required": ["view"],
+            "additionalProperties": False,
+            "description": (
+                "Host-side graph query executed after this block is projected. "
+                "Use only when action is INSPECT; its result is available next turn."
+            ),
         }
     properties: dict[str, Any] = {}
     for name, value in original.items():
