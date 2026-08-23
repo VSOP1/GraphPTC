@@ -120,10 +120,9 @@ query. The current behavior is therefore:
   response, and returned result.
 
 A deterministic synthetic test proves that a returned artifact ID can change the following code
-relative to a metadata-only placebo. In the real AppWorld smoke and pilot, the model made zero
-`INSPECT` declarations or queries. The graph was populated and graph deltas were model-visible,
-but these runs do not establish that inspection or another graph signal causally changed an
-AppWorld action.
+relative to a metadata-only placebo. In the real AppWorld smoke, pilot, and full evaluation, the
+model made zero `INSPECT` declarations or queries. The graph was populated and graph deltas were
+model-visible, but these runs do not establish that inspection causally changed an AppWorld action.
 
 ## Reproducible commands and artifacts
 
@@ -152,7 +151,8 @@ environment freeze hashes, run signature, result/graph hashes, and official outp
 The runs were produced from a dirty working tree at baseline commit
 `c8da46adf9e10f2ffd9c02fa6d42c4a3f864804a`; consequently the recorded source hash, not that
 commit alone, identifies the evaluated implementation. Create a clean commit before any larger
-run. No `test_normal` or `test_challenge` split was accessed or run.
+run. This paragraph describes the earlier dev pilot; the later frozen full evaluation is reported
+below.
 
 ## Dev evidence
 
@@ -172,6 +172,27 @@ stdout truncation, and no inspection query. Its graphs contain 3 task nodes, 25 
 effects. All three graph tasks are complete because all three AppWorld worlds observed
 `complete_task`; graph completion does not imply official correctness.
 
+## Frozen full evaluation
+
+The matched full evaluation was frozen at commit `1676f7e`. Both arms used the same MiMo model,
+AppWorld prompt semantics and few-shot program code, `OriginalPTCAgent`, AppWorld runtime, budgets,
+8,000-character stdout limit, official evaluator, and four task workers. The only method difference
+was `graph_adaptation_mode`: `generic` for GraphPTC and `off` for Fewshot PTC. Graph inspection was
+disabled in both arms. No test task, individual evaluation, or failure report was inspected, and no
+trajectory was retried or used to change the method.
+
+| Split | Arm | Official successes | TGC | SGC | Completed | Execution-failure tasks / blocks | Incomplete | Evaluator / runner failures |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `test_normal` | GraphPTC | 131 / 168 | 78.0 | 67.9 | 162 | 118 / 251 | 6 | 0 / 0 |
+| `test_normal` | Fewshot PTC | 113 / 168 | 67.3 | 41.1 | 143 | 88 / 249 | 25 | 0 / 0 |
+| `test_challenge` | GraphPTC | 291 / 417 | 69.8 | 54.0 | 395 | 346 / 844 | 22 | 0 / 0 |
+| `test_challenge` | Fewshot PTC | 219 / 417 | 52.5 | 30.2 | 336 | 288 / 697 | 81 | 0 / 0 |
+
+GraphPTC improved over the matched baseline by 10.7 TGC points and 26.8 SGC points on
+`test_normal`, and by 17.3 TGC points and 23.8 SGC points on `test_challenge`. All 1,170 task
+records were unique and terminal, every worker termination was confirmed, and the code/data
+versions remained AppWorld 0.1.3.post1 and data 0.1.0.
+
 ## Data handling and next gate
 
 The downloaded AppWorld data license is Apache-2.0 with an additional requirement that public
@@ -180,8 +201,6 @@ raw `runs/appworld`, AppWorld output trees, evaluator traces, task text, ground 
 content. Only non-sensitive manifests, dependency freezes, aggregate metrics, and hashes are
 tracked here.
 
-Before any larger dev run: commit the current source, create a new frozen manifest with unused dev
-tasks, retain the same prompt/runtime settings, and keep concurrency limited until task isolation
-and output namespaces are rechecked. The next generic research question is collection/response-
-schema reasoning; it must be evaluated on fresh dev tasks rather than patched against the frozen
-failure. Test splits remain out of scope until the dev protocol and prompt are frozen.
+The main method and matched baseline are now frozen. Do not use the test results for task-level
+error analysis, prompt changes, or another tuned rerun. Any future method change is a new study and
+must not replace these trajectories.
