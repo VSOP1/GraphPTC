@@ -20,7 +20,7 @@
   "graphptc_commit": "c8da46adf9e10f2ffd9c02fa6d42c4a3f864804a",
   "graphptc_git_dirty": true,
   "graphptc_source_sha256": "65b6cca1e293ca1e1360e3a5dbad8330a954285a7c3a175fd20ecd11863fdfde",
-  "config": "configs/appworld.graphptc-dev-frozen-pilot.toml",
+  "config": "configs/appworld/appworld.graphptc-dev-frozen-pilot.toml",
   "config_sha256": "4980cc7fef80198e5d3446112183988af3b89cf7f034162087d609e3a89011da",
   "prompt_variant": "appworld-ptc-fewshot",
   "system_prompt_sha256": "e5dda4827c18189e249b72e9612ae511f58d108a734e37970d1c698c2e2798f8",

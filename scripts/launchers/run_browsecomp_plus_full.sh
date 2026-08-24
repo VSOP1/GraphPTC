@@ -16,7 +16,7 @@ printf '[%s] starting full BrowseComp-Plus baseline\n' "$(date --iso-8601=second
   >> "$run_dir/full-run.stderr.log"
 cd "$repo_dir"
 "$repo_dir/.venv/Scripts/graphptc.exe" run-browsecomp-plus \
-  --config configs/browsecomp_plus.example.toml \
+  --config configs/browsecomp_plus/browsecomp_plus.example.toml \
   >> "$run_dir/full-run.stdout.log" \
   2>> "$run_dir/full-run.stderr.log"
 exit_code=$?

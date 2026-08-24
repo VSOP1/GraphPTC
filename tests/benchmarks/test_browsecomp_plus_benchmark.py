@@ -295,7 +295,7 @@ def test_checkpoint_archive_preserves_exact_snapshot(tmp_path: Path) -> None:
 
 
 def _config(tmp_path: Path) -> ExperimentConfig:
-    config = ExperimentConfig.from_toml("configs/browsecomp_plus.example.toml")
+    config = ExperimentConfig.from_toml("configs/browsecomp_plus/browsecomp_plus.example.toml")
     (tmp_path / "questions.jsonl").write_text("fixture\n", encoding="utf-8")
     return replace(
         config,

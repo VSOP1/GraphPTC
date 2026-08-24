@@ -3,7 +3,7 @@ set -u
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 run_dir="$repo_dir/runs/browsecomp_plus/direct-tools-v1-turn30-full"
-config="configs/browsecomp_plus.direct-tools-v1-turn30-full.toml"
+config="configs/browsecomp_plus/browsecomp_plus.direct-tools-v1-turn30-full.toml"
 mkdir -p "$run_dir"
 
 if ! curl --fail --silent --show-error --max-time 10 \

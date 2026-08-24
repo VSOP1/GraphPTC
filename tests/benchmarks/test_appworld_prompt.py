@@ -28,7 +28,7 @@ def test_ptc_semantic_prompt_preserves_programmatic_tool_call_semantics() -> Non
     assert demonstrations == ()
 
     code_description = _appworld_ptc_spec(
-        ExperimentConfig.from_toml("configs/appworld.graphptc-dev-fewshot-smoke.toml")
+        ExperimentConfig.from_toml("configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml")
     )["function"]["parameters"]["properties"]["code"]["description"]
     assert "directly in the persistent AppWorld shell" in code_description
     assert "Registered research functions" not in code_description
@@ -89,7 +89,7 @@ def test_appworld_fewshot_baseline_removes_only_graph_contract() -> None:
     )
 
     config = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml"
     )
     baseline_config = replace(
         config,
@@ -105,7 +105,7 @@ def test_unknown_appworld_prompt_variant_is_rejected() -> None:
 
 
 def test_appworld_inspection_schema_is_explicitly_opt_in() -> None:
-    config = ExperimentConfig.from_toml("configs/appworld.graphptc-dev-fewshot-smoke.toml")
+    config = ExperimentConfig.from_toml("configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml")
 
     disabled = _appworld_ptc_spec(config)
     enabled = _appworld_ptc_spec(
@@ -139,7 +139,7 @@ def test_appworld_signature_records_exact_prompt_and_dirty_source_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-inspection-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-inspection-smoke.toml"
     )
     monkeypatch.setattr(appworld_benchmark, "_git_commit", lambda: "commit")
     monkeypatch.setattr(appworld_benchmark, "_git_dirty", lambda: True)

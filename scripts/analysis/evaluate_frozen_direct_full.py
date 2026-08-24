@@ -25,7 +25,7 @@ from graphptc.browsecomp_plus_benchmark import (
 from graphptc.config import ExperimentConfig
 
 
-CONFIG = Path("configs/browsecomp_plus.direct-tools-v1-turn30-full.toml")
+CONFIG = Path("configs/browsecomp_plus/browsecomp_plus.direct-tools-v1-turn30-full.toml")
 RUN_DIR = Path("runs/browsecomp_plus/direct-tools-v1-turn30-full")
 BASE_RESPONSES = RUN_DIR / "responses.jsonl"
 RETRY_RESPONSES = RUN_DIR / "retry-584/responses.jsonl"

@@ -41,7 +41,7 @@ def test_browsecomp_config_is_isolated_from_deepsearchqa() -> None:
 
 
 def test_browsecomp_plus_config_uses_fixed_local_retriever() -> None:
-    config = ExperimentConfig.from_toml("configs/browsecomp_plus.example.toml")
+    config = ExperimentConfig.from_toml("configs/browsecomp_plus/browsecomp_plus.example.toml")
 
     assert config.benchmark.dataset_path == (
         Path.cwd() / "data/browsecomp_plus/questions.jsonl"
@@ -59,7 +59,7 @@ def test_browsecomp_plus_config_uses_fixed_local_retriever() -> None:
 
 
 def test_original_ptc_full_config_uses_frozen_runtime_budget() -> None:
-    config = ExperimentConfig.from_toml("configs/browsecomp_plus.example.toml")
+    config = ExperimentConfig.from_toml("configs/browsecomp_plus/browsecomp_plus.example.toml")
 
     assert config.runtime.compaction_trigger_input_tokens is None
     assert config.runtime.compaction_max_tokens == 2048
@@ -68,10 +68,10 @@ def test_original_ptc_full_config_uses_frozen_runtime_budget() -> None:
 
 def test_appworld_prompt_challenger_configs_are_isolated() -> None:
     semantic = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-semantics-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-semantics-smoke.toml"
     )
     fewshot = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml"
     )
 
     assert semantic.appworld.prompt_variant == "appworld-ptc-semantics"
@@ -83,7 +83,7 @@ def test_appworld_prompt_challenger_configs_are_isolated() -> None:
 
 def test_appworld_inspection_smoke_is_explicitly_enabled() -> None:
     config = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-inspection-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-inspection-smoke.toml"
     )
 
     assert config.runtime.graph_adaptation_mode == "generic"
@@ -93,10 +93,10 @@ def test_appworld_inspection_smoke_is_explicitly_enabled() -> None:
 
 def test_current_appworld_smoke_and_frozen_pilot_have_unique_namespaces() -> None:
     smoke = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-runtime-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-runtime-smoke.toml"
     )
     pilot = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-frozen-pilot.toml"
+        "configs/appworld/appworld.graphptc-dev-frozen-pilot.toml"
     )
 
     assert smoke.appworld.experiment_name == "graphptc-dev-runtime-smoke"

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 in the isolated ToolSandbox environment.
+    import tomli as tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -61,6 +64,20 @@ class AppWorldConfig:
 
 
 @dataclass(frozen=True)
+class ToolSandboxConfig:
+    root: str = "/home/agent/graphptc-toolsandbox"
+    worker_command: tuple[str, ...] = ()
+    results_path: Path = Path("runs/toolsandbox/graphptc/results.jsonl")
+    report_path: Path = Path("runs/toolsandbox/graphptc/report.json")
+    artifact_dir: Path = Path("runs/toolsandbox/graphptc/artifacts")
+    graph_dir: Path = Path("runs/toolsandbox/graphptc/graphs")
+    workers: int = 4
+    expected_scenarios: int = 1_032
+    tool_backend: str = "default"
+    prompt_variant: str = "toolsandbox-ptc-fewshot"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -107,6 +124,7 @@ class ExperimentConfig:
     grader: GraderConfig
     browsecomp_plus: BrowseCompPlusConfig
     appworld: AppWorldConfig
+    toolsandbox: ToolSandboxConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -114,7 +132,7 @@ class ExperimentConfig:
         with config_path.open("rb") as handle:
             raw = tomllib.load(handle)
 
-        base = config_path.resolve().parent.parent
+        base = _repository_root(config_path.resolve())
         benchmark = dict(raw.get("benchmark", {}))
         for key in ("dataset_path", "responses_path", "grades_path", "report_path"):
             value = benchmark.get(key)
@@ -146,6 +164,15 @@ class ExperimentConfig:
         if "worker_command" in appworld:
             appworld["worker_command"] = tuple(appworld["worker_command"])
 
+        toolsandbox = dict(raw.get("toolsandbox", {}))
+        for key in ("results_path", "report_path", "artifact_dir", "graph_dir"):
+            value = toolsandbox.get(key)
+            if value is not None:
+                candidate = Path(value)
+                toolsandbox[key] = candidate if candidate.is_absolute() else base / candidate
+        if "worker_command" in toolsandbox:
+            toolsandbox["worker_command"] = tuple(toolsandbox["worker_command"])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -154,6 +181,7 @@ class ExperimentConfig:
             grader=_build(GraderConfig, raw.get("grader", {})),
             browsecomp_plus=_build(BrowseCompPlusConfig, browsecomp_plus),
             appworld=_build(AppWorldConfig, appworld),
+            toolsandbox=_build(ToolSandboxConfig, toolsandbox),
         )
 
     def require_api_key(self, env_name: str) -> str:
@@ -172,3 +200,10 @@ def _build(cls: type[Any], values: dict[str, Any]) -> Any:
         return cls(**values)
     except TypeError as exc:
         raise ConfigError(f"Invalid [{cls.__name__.removesuffix('Config').lower()}] config: {exc}") from exc
+
+
+def _repository_root(config_path: Path) -> Path:
+    for parent in config_path.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return config_path.parent.parent

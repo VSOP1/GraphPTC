@@ -22,7 +22,7 @@ from graphptc.model import OpenAIChatModel
 from graphptc.ptc import extract_result_tag
 
 
-CONFIG = Path("configs/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml")
+CONFIG = Path("configs/browsecomp_plus/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml")
 SUITE = Path("data/codeact_validation/heldout12.json")
 OUTPUT = Path("runs/original_ptc_v1/synthetic_high_density/report.json")
 TASK_IDS = {

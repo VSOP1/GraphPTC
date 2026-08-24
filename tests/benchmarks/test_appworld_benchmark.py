@@ -92,7 +92,7 @@ def test_runner_closes_world_and_marks_completed_graph(
     monkeypatch: Any,
 ) -> None:
     config = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml"
     )
     config = replace(
         config,
@@ -180,7 +180,7 @@ def test_aggregate_evaluator_requires_the_exact_saved_run_signature(
     monkeypatch: Any,
 ) -> None:
     config = ExperimentConfig.from_toml(
-        "configs/appworld.graphptc-dev-fewshot-smoke.toml"
+        "configs/appworld/appworld.graphptc-dev-fewshot-smoke.toml"
     )
     config = replace(
         config,

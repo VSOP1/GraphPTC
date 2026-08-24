@@ -24,7 +24,7 @@ while true; do
         "$(date --iso-8601=seconds)" >> "$progress_log"
       cd "$repo_dir"
       "$repo_dir/.venv/Scripts/graphptc.exe" evaluate-browsecomp-plus \
-        --config configs/browsecomp_plus.example.toml \
+        --config configs/browsecomp_plus/browsecomp_plus.example.toml \
         >> "$run_dir/evaluate.stdout.log" \
         2>> "$run_dir/evaluate.stderr.log"
       grader_exit=$?

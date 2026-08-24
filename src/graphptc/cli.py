@@ -26,12 +26,18 @@ from .appworld_benchmark import (
     run_appworld_benchmark,
 )
 from .deepsearchqa import DeepSearchQAError, download_deepsearchqa
+from .toolsandbox_benchmark import (
+    evaluate_toolsandbox_benchmark,
+    inspect_toolsandbox,
+    run_toolsandbox_benchmark,
+)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
 BROWSECOMP_CONFIG = "configs/browsecomp.example.toml"
-BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus.example.toml"
-APPWORLD_CONFIG = "configs/appworld.graphptc-dev-smoke.toml"
+BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus/browsecomp_plus.example.toml"
+APPWORLD_CONFIG = "configs/appworld/appworld.graphptc-dev-smoke.toml"
+TOOL_SANDBOX_CONFIG = "configs/toolsandbox/graphptc-smoke.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -140,6 +146,27 @@ def _run_command(
 
     if args.command == "evaluate-appworld":
         print(json.dumps(evaluate_appworld_benchmark(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-toolsandbox":
+        inspection = inspect_toolsandbox(config)
+        inspection.pop("scenario_names", None)
+        print(json.dumps(inspection, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-toolsandbox":
+        summary = run_toolsandbox_benchmark(
+            config,
+            limit=args.limit,
+            scenario_names=args.scenario_name,
+            restart=args.restart,
+            progress=None,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 else 1
+
+    if args.command == "evaluate-toolsandbox":
+        print(json.dumps(evaluate_toolsandbox_benchmark(config), ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
@@ -264,6 +291,24 @@ def _build_parser() -> argparse.ArgumentParser:
         "evaluate-appworld", help="Run the official AppWorld evaluator over saved task worlds."
     )
     _add_config_argument(appworld_evaluate, default=APPWORLD_CONFIG)
+
+    toolsandbox_inspect = subparsers.add_parser(
+        "inspect-toolsandbox", help="Inspect the isolated official ToolSandbox installation."
+    )
+    _add_config_argument(toolsandbox_inspect, default=TOOL_SANDBOX_CONFIG)
+
+    toolsandbox_run = subparsers.add_parser(
+        "run-toolsandbox", help="Run GraphPTC or Fewshot PTC on official ToolSandbox scenarios."
+    )
+    _add_config_argument(toolsandbox_run, default=TOOL_SANDBOX_CONFIG)
+    toolsandbox_run.add_argument("--limit", type=int)
+    toolsandbox_run.add_argument("--scenario-name", action="append", default=[])
+    toolsandbox_run.add_argument("--restart", action="store_true")
+
+    toolsandbox_evaluate = subparsers.add_parser(
+        "evaluate-toolsandbox", help="Aggregate saved official ToolSandbox evaluation results."
+    )
+    _add_config_argument(toolsandbox_evaluate, default=TOOL_SANDBOX_CONFIG)
 
     return parser
 
