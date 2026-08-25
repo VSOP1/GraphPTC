@@ -78,6 +78,27 @@ class ToolSandboxConfig:
 
 
 @dataclass(frozen=True)
+class AgentDiffConfig:
+    root: str = "/home/agent/graphptc-agent-diff"
+    worker_command: tuple[str, ...] = ()
+    dataset_dir: Path = Path("data/agent_diff")
+    dataset_split: str = "all"
+    results_path: Path = Path("runs/agent_diff/graphptc/results.jsonl")
+    report_path: Path = Path("runs/agent_diff/graphptc/report.json")
+    artifact_dir: Path = Path("runs/agent_diff/graphptc/artifacts")
+    graph_dir: Path = Path("runs/agent_diff/graphptc/graphs")
+    progress_path: Path = Path("runs/agent_diff/graphptc/progress.jsonl")
+    workers: int = 8
+    expected_tasks: int = 224
+    trials: int = 3
+    prompt_variant: str = "agent-diff-ptc-fewshot"
+    documentation_condition: str = "no-docs"
+    official_commit: str = "3bb9c40707df23d89e5dbc0e40c424ba38c69ff8"
+    api_key_env: str = "AGENT_DIFF_API_KEY"
+    base_url_env: str = "AGENT_DIFF_BASE_URL"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -125,6 +146,7 @@ class ExperimentConfig:
     browsecomp_plus: BrowseCompPlusConfig
     appworld: AppWorldConfig
     toolsandbox: ToolSandboxConfig
+    agent_diff: AgentDiffConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -173,6 +195,22 @@ class ExperimentConfig:
         if "worker_command" in toolsandbox:
             toolsandbox["worker_command"] = tuple(toolsandbox["worker_command"])
 
+        agent_diff = dict(raw.get("agent_diff", {}))
+        for key in (
+            "dataset_dir",
+            "results_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+            "progress_path",
+        ):
+            value = agent_diff.get(key)
+            if value is not None:
+                candidate = Path(value)
+                agent_diff[key] = candidate if candidate.is_absolute() else base / candidate
+        if "worker_command" in agent_diff:
+            agent_diff["worker_command"] = tuple(agent_diff["worker_command"])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -182,6 +220,7 @@ class ExperimentConfig:
             browsecomp_plus=_build(BrowseCompPlusConfig, browsecomp_plus),
             appworld=_build(AppWorldConfig, appworld),
             toolsandbox=_build(ToolSandboxConfig, toolsandbox),
+            agent_diff=_build(AgentDiffConfig, agent_diff),
         )
 
     def require_api_key(self, env_name: str) -> str:

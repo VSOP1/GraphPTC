@@ -16,4 +16,5 @@ data/browsecomp_plus/*.jsonl
 data/browsecomp_plus/*.sqlite3
 data/browsecomp_plus/*.sqlite3.tmp
 data/browsecomp_plus/qrel_*.txt
+data/agent_diff/*.jsonl
 runs/

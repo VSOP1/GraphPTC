@@ -1,0 +1,13 @@
+{
+  "official_commit": "3bb9c40707df23d89e5dbc0e40c424ba38c69ff8",
+  "files": {
+    "train.jsonl": "612004cbc184569173bd75dd329ccdfbed948474bac92361dd229bfd5a529846",
+    "test.jsonl": "032dbd7fc40a052ed36cb1062294bddb254d1c34b6263c91912cf0edd6b93060",
+    "all_numbered.jsonl": "d1ea9b5316d9b674cae8e450292cd17572d1aae46575a32bc23f9f4bea044df0"
+  },
+  "counts": {
+    "train": 179,
+    "test": 45,
+    "all": 224
+  }
+}

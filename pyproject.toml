@@ -20,6 +20,9 @@ dependencies = [
 browsecomp-plus = [
     "pyarrow==25.0.0",
 ]
+agent-diff = [
+    "agent-diff==1.0.6",
+]
 gemini = [
     "google-genai==2.15.0",
 ]

@@ -31,6 +31,12 @@ from .toolsandbox_benchmark import (
     inspect_toolsandbox,
     run_toolsandbox_benchmark,
 )
+from .agentdiff_benchmark import (
+    download_agent_diff,
+    evaluate_agent_diff_benchmark,
+    inspect_agent_diff,
+    run_agent_diff_benchmark,
+)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
@@ -38,6 +44,7 @@ BROWSECOMP_CONFIG = "configs/browsecomp.example.toml"
 BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus/browsecomp_plus.example.toml"
 APPWORLD_CONFIG = "configs/appworld/appworld.graphptc-dev-smoke.toml"
 TOOL_SANDBOX_CONFIG = "configs/toolsandbox/graphptc-smoke.toml"
+AGENT_DIFF_CONFIG = "configs/agent_diff/graphptc-smoke.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -167,6 +174,30 @@ def _run_command(
 
     if args.command == "evaluate-toolsandbox":
         print(json.dumps(evaluate_toolsandbox_benchmark(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "download-agent-diff":
+        print(download_agent_diff(config))
+        return 0
+
+    if args.command == "inspect-agent-diff":
+        print(json.dumps(inspect_agent_diff(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-agent-diff":
+        summary = run_agent_diff_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            trials=args.trial,
+            restart=args.restart,
+            progress=None,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 and summary.evaluator_failures == 0 else 1
+
+    if args.command == "evaluate-agent-diff":
+        print(json.dumps(evaluate_agent_diff_benchmark(config), ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
@@ -309,6 +340,30 @@ def _build_parser() -> argparse.ArgumentParser:
         "evaluate-toolsandbox", help="Aggregate saved official ToolSandbox evaluation results."
     )
     _add_config_argument(toolsandbox_evaluate, default=TOOL_SANDBOX_CONFIG)
+
+    agent_diff_download = subparsers.add_parser(
+        "download-agent-diff", help="Download and verify the frozen official Agent-Diff dataset."
+    )
+    _add_config_argument(agent_diff_download, default=AGENT_DIFF_CONFIG)
+
+    agent_diff_inspect = subparsers.add_parser(
+        "inspect-agent-diff", help="Inspect the isolated official Agent-Diff SDK and dataset."
+    )
+    _add_config_argument(agent_diff_inspect, default=AGENT_DIFF_CONFIG)
+
+    agent_diff_run = subparsers.add_parser(
+        "run-agent-diff", help="Run GraphPTC or Fewshot PTC on Agent-Diff."
+    )
+    _add_config_argument(agent_diff_run, default=AGENT_DIFF_CONFIG)
+    agent_diff_run.add_argument("--limit", type=int)
+    agent_diff_run.add_argument("--task-id", action="append", default=[])
+    agent_diff_run.add_argument("--trial", action="append", type=int, default=[])
+    agent_diff_run.add_argument("--restart", action="store_true")
+
+    agent_diff_evaluate = subparsers.add_parser(
+        "evaluate-agent-diff", help="Aggregate official Agent-Diff state-diff results."
+    )
+    _add_config_argument(agent_diff_evaluate, default=AGENT_DIFF_CONFIG)
 
     return parser
 
