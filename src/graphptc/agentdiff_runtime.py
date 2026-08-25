@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import queue
 import subprocess
 import threading
@@ -144,6 +145,7 @@ class AgentDiffProgramRuntime(BaseRuntime):
         with self._lock:
             process = self._process
             if process is None:
+                self._cleanup_orphan()
                 self._closed = True
                 self._termination_confirmed = True
                 return
@@ -162,6 +164,7 @@ class AgentDiffProgramRuntime(BaseRuntime):
             finally:
                 self._process = None
                 self._lines = None
+                self._cleanup_orphan()
                 self._closed = True
 
     def telemetry(self) -> dict[str, Any]:
@@ -200,6 +203,7 @@ class AgentDiffProgramRuntime(BaseRuntime):
             text=True,
             encoding="utf-8",
             errors="replace",
+            env=self._worker_env(),
         )
         lines: queue.Queue[str | None] = queue.Queue()
 
@@ -232,6 +236,37 @@ class AgentDiffProgramRuntime(BaseRuntime):
             self._terminate()
             raise RuntimeError(f"Agent-Diff worker failed to initialize: {response}")
         self._metadata = {key: value for key, value in response.items() if key != "type"}
+
+    def _worker_env(self) -> dict[str, str]:
+        env = dict(os.environ)
+        forwarded = tuple(f"{name}/u" for name in ("AGENT_DIFF_API_KEY", "AGENT_DIFF_BASE_URL"))
+        env["WSLENV"] = ":".join(value for value in (env.get("WSLENV", ""), *forwarded) if value)
+        return env
+
+    def _cleanup_orphan(self) -> None:
+        environment_id = str(self._metadata.get("environment_id", ""))
+        if self._environment_deleted or not environment_id:
+            return
+        try:
+            completed = subprocess.run(
+                self._worker_command,
+                input=json.dumps({"type": "cleanup", "environment_id": environment_id}) + "\n",
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                env=self._worker_env(),
+                check=False,
+            )
+            lines = [line for line in completed.stdout.splitlines() if line.strip()]
+            response = json.loads(lines[-1]) if completed.returncode == 0 and lines else {}
+            self._environment_deleted = bool(response.get("environment_deleted"))
+            if not self._environment_deleted:
+                detail = (completed.stdout or completed.stderr)[-1000:]
+                self._close_error = f"orphan cleanup failed: {detail}"
+        except Exception as exc:
+            self._close_error = f"orphan cleanup failed: {type(exc).__name__}: {exc}"
 
     def _send(self, message: dict[str, Any]) -> None:
         if self._process is None or self._process.stdin is None:

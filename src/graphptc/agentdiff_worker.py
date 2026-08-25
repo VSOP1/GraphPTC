@@ -28,15 +28,39 @@ def _literal(node: ast.AST | None) -> str:
     return "<dynamic>"
 
 
+def _root_name(node: ast.AST) -> str | None:
+    while isinstance(node, ast.Attribute):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def _requests_clients(tree: ast.AST) -> set[str]:
+    clients = {"requests"}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = node.value
+        if not isinstance(value, ast.Call) or not isinstance(value.func, ast.Attribute):
+            continue
+        if _root_name(value.func) != "requests" or value.func.attr.lower() not in {"session"}:
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        clients.update(target.id for target in targets if isinstance(target, ast.Name))
+    return clients
+
+
 def _http_actions(code: str, *, block_success: bool) -> list[dict[str, Any]]:
     try:
         tree = ast.parse(code)
     except SyntaxError:
         return []
     actions: list[dict[str, Any]] = []
+    clients = _requests_clients(tree)
     methods = {"get", "head", "options", "post", "put", "patch", "delete", "request"}
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if _root_name(node.func.value) not in clients:
             continue
         name = node.func.attr.lower()
         if name not in methods:
@@ -96,6 +120,8 @@ class Session:
             base_url=self.client.base_url,
             api_key=self.client.api_key,
         )
+        self.original_cwd = os.getcwd()
+        os.chdir(self.executor.workspace.path)
         self.deleted = False
 
     def execute(self, code: str) -> dict[str, Any]:
@@ -129,6 +155,7 @@ class Session:
         workspace = getattr(self.executor, "workspace", None)
         destroy = getattr(workspace, "destroy", None)
         if callable(destroy):
+            os.chdir(self.original_cwd)
             destroy()
         return self.deleted
 
@@ -190,6 +217,18 @@ def _inspect(request: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _cleanup(request: Mapping[str, Any]) -> dict[str, Any]:
+    from agent_diff import AgentDiff
+
+    environment_id = str(request["environment_id"])
+    response = AgentDiff().delete_env(envId=environment_id)
+    return {
+        "type": "closed",
+        "environment_id": environment_id,
+        "environment_deleted": str(getattr(response, "status", "")).lower() in {"deleted", "success"},
+    }
+
+
 def main() -> int:
     session: Session | None = None
     try:
@@ -198,6 +237,9 @@ def main() -> int:
             kind = request.get("type")
             if kind == "inspect":
                 _emit(_inspect(request))
+            elif kind == "cleanup":
+                _emit(_cleanup(request))
+                return 0
             elif kind == "initialize":
                 session = Session(request)
                 _emit(

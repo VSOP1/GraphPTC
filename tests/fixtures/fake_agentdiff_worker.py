@@ -24,6 +24,16 @@ for raw in sys.stdin:
                 "base_url": "http://fake",
             }
         )
+    elif kind == "cleanup":
+        emit(
+            {
+                "type": "closed",
+                "environment_id": request["environment_id"],
+                "environment_deleted": True,
+            }
+        )
+        closed = True
+        break
     elif kind == "initialize":
         emit(
             {

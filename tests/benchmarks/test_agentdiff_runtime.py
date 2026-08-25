@@ -79,3 +79,13 @@ def test_runtime_evaluates_then_deletes_isolated_environment() -> None:
         assert second.execute("print_service_state()").stdout == "0\n"
     finally:
         second.close()
+
+
+def test_broken_worker_uses_separate_environment_cleanup() -> None:
+    world = runtime()
+    _ = world.metadata
+    world._mark_broken("simulated worker loss", failure_type="worker_failure")
+    world.close()
+
+    assert world.telemetry()["environment_deleted"] is True
+    assert world.telemetry()["termination_confirmed"] is True
