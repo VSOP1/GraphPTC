@@ -99,6 +99,32 @@ class AgentDiffConfig:
 
 
 @dataclass(frozen=True)
+class Tau3Config:
+    root: str = "/home/agent/graphptc-tau3-bench"
+    worker_command: tuple[str, ...] = ()
+    results_path: Path = Path("runs/tau3/graphptc/results.jsonl")
+    report_path: Path = Path("runs/tau3/graphptc/report.json")
+    artifact_dir: Path = Path("runs/tau3/graphptc/artifacts")
+    graph_dir: Path = Path("runs/tau3/graphptc/graphs")
+    progress_path: Path = Path("runs/tau3/graphptc/progress.jsonl")
+    domains: tuple[str, ...] = ("airline", "retail", "telecom")
+    task_split_name: str = "base"
+    trials: int = 4
+    workers: int = 3
+    max_steps: int = 200
+    max_errors: int = 10
+    seed: int = 300
+    enforce_communication_protocol: bool = False
+    task_max_retries: int = 3
+    retry_delay_seconds: float = 1.0
+    prompt_variant: str = "tau3-ptc-fewshot"
+    official_commit: str = "fc0055dc4e0a316c3f83133267fbd6faaa770992"
+    user_model: str = "openai/mimo-v2.5"
+    user_api_key_env: str = "MIMO_API_KEY"
+    user_base_url: str = "https://api.xiaomimimo.com/v1"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -147,6 +173,7 @@ class ExperimentConfig:
     appworld: AppWorldConfig
     toolsandbox: ToolSandboxConfig
     agent_diff: AgentDiffConfig
+    tau3: Tau3Config
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -211,6 +238,22 @@ class ExperimentConfig:
         if "worker_command" in agent_diff:
             agent_diff["worker_command"] = tuple(agent_diff["worker_command"])
 
+        tau3 = dict(raw.get("tau3", {}))
+        for key in (
+            "results_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+            "progress_path",
+        ):
+            value = tau3.get(key)
+            if value is not None:
+                candidate = Path(value)
+                tau3[key] = candidate if candidate.is_absolute() else base / candidate
+        for key in ("worker_command", "domains"):
+            if key in tau3:
+                tau3[key] = tuple(tau3[key])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -221,6 +264,7 @@ class ExperimentConfig:
             appworld=_build(AppWorldConfig, appworld),
             toolsandbox=_build(ToolSandboxConfig, toolsandbox),
             agent_diff=_build(AgentDiffConfig, agent_diff),
+            tau3=_build(Tau3Config, tau3),
         )
 
     def require_api_key(self, env_name: str) -> str:

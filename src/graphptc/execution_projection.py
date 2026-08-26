@@ -93,6 +93,10 @@ class PTCExecutionProjection:
             effect = str(action.get("effect", "read"))
             success = action.get("success", True)
             normalized_success = success if isinstance(success, bool) else None
+            state_changed = action.get("state_changed")
+            normalized_state_changed = (
+                state_changed if isinstance(state_changed, bool) else None
+            )
             self._graph.add_node(
                 action_id,
                 "API_ACTION",
@@ -102,6 +106,7 @@ class PTCExecutionProjection:
                     "success": normalized_success,
                     "outcome_unknown": bool(action.get("outcome_unknown", False)),
                     "effect_basis": str(action.get("effect_basis", "contract"))[:100],
+                    "state_changed": normalized_state_changed,
                 },
             )
             self._graph.add_edge("executes", block_id, action_id)
@@ -113,7 +118,11 @@ class PTCExecutionProjection:
                 data={"action": action_id},
             )
             self._graph.add_edge("consumes", input_id, action_id)
-            if effect == "write" and normalized_success is True:
+            if (
+                effect == "write"
+                and normalized_success is True
+                and normalized_state_changed is not False
+            ):
                 state_id = f"state_effect:{self._block_count}:{index}"
                 self._graph.add_node(
                     state_id,

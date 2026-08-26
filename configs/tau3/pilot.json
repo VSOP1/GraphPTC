@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "benchmark": "tau3-bench",
+  "official_version": "1.0.1",
+  "official_commit": "fc0055dc4e0a316c3f83133267fbd6faaa770992",
+  "task_split_name": "base",
+  "trial_indices": [0],
+  "tasks": {
+    "airline": ["0", "1"],
+    "retail": ["0", "1"],
+    "telecom": [
+      "[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None]",
+      "[mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None]"
+    ]
+  },
+  "task_id_hashes": {
+    "airline": "9be607546c08e5b94a339456ccd87347a234493b1aecb70cb9ddb79764a436a3",
+    "retail": "f05763b3fe863611f18a82c95cb3cf72c3243b3e95d8e40e88c046861fa88213",
+    "telecom": "1d07ab2f69e830ef731fe8168cc11180ef09e62c6d6f8c31a73bc60db92be7cc"
+  }
+}

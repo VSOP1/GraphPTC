@@ -197,6 +197,35 @@ def test_failed_block_keeps_prior_api_outcome_unknown_without_inventing_state_ef
     assert not any(node["kind"] == "STATE_EFFECT" for node in graph["nodes"])
 
 
+def test_declared_write_without_official_state_delta_does_not_invent_state_effect() -> None:
+    controller = GoalGraphAdaptation({}, {}, task="Idempotent update", expose_graph_api=False)
+    hooks = GraphAgentHooks.from_controller(controller)
+    hooks.ptc_call_metadata_callback(
+        {"action": "CONTINUE", "target": "task", "expected_change": "ensure state"}
+    )
+    trace = _trace()
+    trace.runtime_trace = {
+        "external_actions": [
+            {
+                "name": "ensure_enabled",
+                "arguments": {},
+                "effect": "write",
+                "success": True,
+                "state_changed": False,
+                "effect_basis": "official_tool_metadata_and_db_hash",
+            }
+        ]
+    }
+
+    hooks.block_observation_factory(trace)
+    graph = controller.graph_artifact()
+    action = next(node for node in graph["nodes"] if node["kind"] == "API_ACTION")
+
+    assert action["data"]["effect"] == "write"
+    assert action["data"]["state_changed"] is False
+    assert not any(node["kind"] == "STATE_EFFECT" for node in graph["nodes"])
+
+
 def test_disabled_host_inspection_is_not_offered() -> None:
     controller = GoalGraphAdaptation(
         {}, {}, task="Inspect dependencies", expose_graph_api=False
