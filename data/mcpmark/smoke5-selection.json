@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "suite": "easy",
+  "manifest_sha256": "e38ffb4d3764df6d4c9b412e314e4e0f4016db08658080c15ddc93dac358a2af",
+  "selection_rule": "first manifest task per report service not present in the immutable terminal-task ledger before the frozen smoke",
+  "excluded_terminal_task_ids": [
+    "filesystem:file_context/file_splitting",
+    "filesystem:file_context/pattern_matching",
+    "filesystem:file_context/uppercase",
+    "notion:computer_science_student_dashboard/simple__code_snippets_go",
+    "github:build-your-own-x/close_commented_issues",
+    "postgres:chinook/customer_data_migration_basic",
+    "playwright_webarena:reddit/ai_data_analyst_easy"
+  ],
+  "task_ids": [
+    "filesystem:file_property/largest_rename",
+    "notion:computer_science_student_dashboard/simple__study_session_tracker",
+    "github:build-your-own-x/record_recent_commits",
+    "postgres:chinook/update_employee_info",
+    "playwright_webarena:reddit/llm_research_summary_easy"
+  ]
+}

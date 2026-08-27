@@ -125,6 +125,37 @@ class Tau3Config:
 
 
 @dataclass(frozen=True)
+class MCPMarkConfig:
+    root: str = "/mnt/d/MCPMark"
+    official_commit: str = "cd45b7f57923b9b3985467f5139927575f83141c"
+    official_worker_command: tuple[str, ...] = ()
+    npx_command: str = "npx"
+    npm_cache_dir: str = ""
+    npm_dependency_cutoff: str = ""
+    pipx_command: str = "pipx"
+    docker_command: str = "docker"
+    postgres_pip_constraints: Path = Path(
+        "data/mcpmark/postgres-mcp-0.3.0-constraints.txt"
+    )
+    platform_provenance_path: Path = Path(
+        "runs/mcpmark/platform-verification/meta.json"
+    )
+    env_path: Path = Path(".mcp_env")
+    task_manifest_path: Path = Path("data/mcpmark/standard-127.json")
+    results_path: Path = Path("runs/mcpmark/results.jsonl")
+    report_path: Path = Path("runs/mcpmark/report.json")
+    artifact_dir: Path = Path("runs/mcpmark/artifacts")
+    graph_dir: Path = Path("runs/mcpmark/graphs")
+    progress_path: Path = Path("runs/mcpmark/progress.jsonl")
+    task_suite: str = "standard"
+    expected_tasks: int = 127
+    task_ids: tuple[str, ...] = ()
+    workers: int = 1
+    k: int = 1
+    prompt_variant: str = "mcpmark-ptc-fewshot"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -174,6 +205,7 @@ class ExperimentConfig:
     toolsandbox: ToolSandboxConfig
     agent_diff: AgentDiffConfig
     tau3: Tau3Config
+    mcpmark: MCPMarkConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -254,6 +286,26 @@ class ExperimentConfig:
             if key in tau3:
                 tau3[key] = tuple(tau3[key])
 
+        mcpmark = dict(raw.get("mcpmark", {}))
+        for key in (
+            "env_path",
+            "task_manifest_path",
+            "results_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+            "progress_path",
+            "postgres_pip_constraints",
+            "platform_provenance_path",
+        ):
+            value = mcpmark.get(key)
+            if value is not None:
+                candidate = Path(value)
+                mcpmark[key] = candidate if candidate.is_absolute() else base / candidate
+        for key in ("official_worker_command", "task_ids"):
+            if key in mcpmark:
+                mcpmark[key] = tuple(mcpmark[key])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -265,6 +317,7 @@ class ExperimentConfig:
             toolsandbox=_build(ToolSandboxConfig, toolsandbox),
             agent_diff=_build(AgentDiffConfig, agent_diff),
             tau3=_build(Tau3Config, tau3),
+            mcpmark=_build(MCPMarkConfig, mcpmark),
         )
 
     def require_api_key(self, env_name: str) -> str:

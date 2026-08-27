@@ -42,6 +42,12 @@ from .tau3_benchmark import (
     inspect_tau3,
     run_tau3_benchmark,
 )
+from .mcpmark_benchmark import (
+    compare_mcpmark_benchmarks,
+    evaluate_mcpmark_benchmark,
+    inspect_mcpmark,
+    run_mcpmark_benchmark,
+)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
@@ -51,6 +57,7 @@ APPWORLD_CONFIG = "configs/appworld/appworld.graphptc-dev-smoke.toml"
 TOOL_SANDBOX_CONFIG = "configs/toolsandbox/graphptc-smoke.toml"
 AGENT_DIFF_CONFIG = "configs/agent_diff/graphptc-smoke.toml"
 TAU3_CONFIG = "configs/tau3/graphptc-smoke.toml"
+MCPMARK_CONFIG = "configs/mcpmark/graphptc-smoke5.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -228,6 +235,49 @@ def _run_command(
 
     if args.command == "evaluate-tau3":
         print(json.dumps(evaluate_tau3_benchmark(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-mcpmark":
+        manifest = inspect_mcpmark(config)
+        print(
+            json.dumps(
+                {
+                    "official_commit": manifest["official_commit"],
+                    "task_suite": manifest["task_suite"],
+                    "expected_tasks": manifest["expected_tasks"],
+                    "tasks_sha256": manifest["tasks_sha256"],
+                    "task_manifest_path": str(config.mcpmark.task_manifest_path),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "run-mcpmark":
+        summary = run_mcpmark_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            progress=None,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if not (
+            summary.setup_failures
+            or summary.execution_failures
+            or summary.evaluator_failures
+            or summary.cleanup_failures
+        ) else 1
+
+    if args.command == "evaluate-mcpmark":
+        report = evaluate_mcpmark_benchmark(config)
+        print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-mcpmark":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_mcpmark_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["overall"], ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
@@ -414,6 +464,47 @@ def _build_parser() -> argparse.ArgumentParser:
         "evaluate-tau3", help="Aggregate saved official tau3-bench rewards."
     )
     _add_config_argument(tau3_evaluate, default=TAU3_CONFIG)
+
+    mcpmark_inspect = subparsers.add_parser(
+        "inspect-mcpmark",
+        help="Audit the frozen MCPMark Verified checkout and write its task manifest.",
+    )
+    _add_config_argument(mcpmark_inspect, default=MCPMARK_CONFIG)
+
+    mcpmark_run = subparsers.add_parser(
+        "run-mcpmark",
+        help="Run GraphPTC or Fewshot PTC through official MCPMark lifecycle and verifiers.",
+    )
+    _add_config_argument(mcpmark_run, default=MCPMARK_CONFIG)
+    mcpmark_run.add_argument("--limit", type=int)
+    mcpmark_run.add_argument(
+        "--task-id",
+        action="append",
+        default=[],
+        help="Exact service:category/task ID; repeat for multiple tasks.",
+    )
+
+    mcpmark_evaluate = subparsers.add_parser(
+        "evaluate-mcpmark",
+        help="Validate and summarize saved official MCPMark verifier results.",
+    )
+    _add_config_argument(mcpmark_evaluate, default=MCPMARK_CONFIG)
+
+    mcpmark_compare = subparsers.add_parser(
+        "compare-mcpmark",
+        help="Validate and compare paired GraphPTC and Fewshot PTC MCPMark reports.",
+    )
+    _add_config_argument(mcpmark_compare, default="configs/mcpmark/graphptc.toml")
+    mcpmark_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/mcpmark/fewshot-ptc.toml"),
+    )
+    mcpmark_compare.add_argument(
+        "--output",
+        type=Path,
+        default=Path("runs/mcpmark/paired-report.json"),
+    )
 
     return parser
 
