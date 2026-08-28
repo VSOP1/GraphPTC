@@ -3,6 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from graphptc.config import ModelConfig
 from graphptc.model import OpenAIChatModel
 
@@ -25,6 +27,19 @@ class FakeClient:
     def with_options(self, **kwargs: Any) -> FakeClient:
         self.options = kwargs
         return self
+
+
+class SequenceCompletions:
+    def __init__(self, values: list[Any]) -> None:
+        self.values = list(values)
+        self.calls = 0
+
+    def create(self, **kwargs: Any) -> Any:
+        self.calls += 1
+        value = self.values.pop(0)
+        if isinstance(value, Exception):
+            raise value
+        return value
 
 
 def test_mimo_turn_preserves_reasoning_content_and_tool_call() -> None:
@@ -117,3 +132,78 @@ def test_empty_system_prompt_is_not_injected() -> None:
 
     assert completions.request is not None
     assert completions.request["messages"] == [{"role": "user", "content": "task"}]
+
+
+def test_fixed_retry_policy_records_all_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok", tool_calls=[]))]
+    )
+    completions = SequenceCompletions(
+        [RuntimeError("temporary-1"), RuntimeError("temporary-2"), response]
+    )
+    model = object.__new__(OpenAIChatModel)
+    model.config = ModelConfig(
+        model="mimo-v2.5",
+        max_retries=2,
+        retry_backoff_seconds=1.5,
+        retry_all_errors=True,
+    )
+    model._client = FakeClient(completions)
+    delays: list[float] = []
+    monkeypatch.setattr("graphptc.model.time.sleep", delays.append)
+
+    actual, attempts = model._create_with_retries({"model": "mimo-v2.5"}, 30.0)
+
+    assert actual is response
+    assert completions.calls == 3
+    assert [item.status for item in attempts] == ["failed", "failed", "success"]
+    assert [item.retry_delay_seconds for item in attempts] == [1.5, 1.5, None]
+    assert delays == [1.5, 1.5]
+
+
+def test_official_retry_policy_retries_empty_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    empty = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="", tool_calls=[]))]
+    )
+    response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok", tool_calls=[]))]
+    )
+    completions = SequenceCompletions([empty, response])
+    model = object.__new__(OpenAIChatModel)
+    model.config = ModelConfig(
+        model="mimo-v2.5",
+        max_retries=1,
+        retry_backoff_seconds=1.5,
+        retry_all_errors=True,
+    )
+    model._client = FakeClient(completions)
+    monkeypatch.setattr("graphptc.model.time.sleep", lambda _: None)
+
+    actual, attempts = model._create_with_retries({"model": "mimo-v2.5"}, 30.0)
+
+    assert actual is response
+    assert [item.error_type for item in attempts] == ["ValueError", None]
+
+
+def test_deadline_retry_policy_has_no_attempt_count_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok", tool_calls=[]))]
+    )
+    completions = SequenceCompletions(
+        [RuntimeError("temporary-1"), RuntimeError("temporary-2"), response]
+    )
+    model = object.__new__(OpenAIChatModel)
+    model.config = ModelConfig(
+        model="mimo-v2.5",
+        max_retries=-1,
+        retry_backoff_seconds=0.01,
+        retry_all_errors=True,
+    )
+    model._client = FakeClient(completions)
+    monkeypatch.setattr("graphptc.model.time.sleep", lambda _: None)
+
+    actual, attempts = model._create_with_retries({"model": "mimo-v2.5"}, 30.0)
+
+    assert actual is response
+    assert completions.calls == 3
+    assert [item.status for item in attempts] == ["failed", "failed", "success"]

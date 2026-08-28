@@ -30,6 +30,7 @@ class ToolEffectContract:
     cacheable: bool = False
     artifact_kind: str = "tool_result"
     normalize_arguments: ArgumentNormalizer = _identity_arguments
+    normalize_artifact: NoveltyKey = _identity_value
     novelty_key: NoveltyKey = _identity_value
 
     def __post_init__(self) -> None:
@@ -82,7 +83,7 @@ class ToolGraphRuntime:
         self,
         tool_name: str,
         *,
-        target: str | None = None,
+        graph_target: str | None = None,
         consumes: tuple[str, ...] = (),
         **arguments: Any,
     ) -> ToolInvocation:
@@ -105,8 +106,8 @@ class ToolGraphRuntime:
                 "effect": contract.effect,
             },
         )
-        if target and target in self.graph.nodes:
-            self.graph.add_edge("targets", action_id, target)
+        if graph_target and graph_target in self.graph.nodes:
+            self.graph.add_edge("targets", action_id, graph_target)
         inferred_inputs = {
             self._artifact_by_value[key]
             for value in arguments.values()
@@ -149,12 +150,13 @@ class ToolGraphRuntime:
         artifact_id: str | None = cached_artifact
         novel = False
         if success and not reused:
+            artifact_value = contract.normalize_artifact(value)
             artifact_index = self._artifact_counts.get(tool_name, 0) + 1
             self._artifact_counts[tool_name] = artifact_index
             artifact_id = f"artifact:{tool_name}:{artifact_index}"
             self.graph.put_artifact(
                 artifact_id,
-                value,
+                artifact_value,
                 kind=contract.artifact_kind,
                 data={"operation": tool_name},
             )
@@ -165,7 +167,7 @@ class ToolGraphRuntime:
                 novel = True
             else:
                 self.graph.add_edge("equivalent_to", equivalent_artifact, artifact_id)
-            for key in _value_keys(value):
+            for key in _value_keys(artifact_value):
                 self._artifact_by_value[key] = artifact_id
             if contract.cacheable:
                 self._cache[(tool_name, cache_key)] = artifact_id

@@ -165,7 +165,8 @@ class OpenAIChatModel:
             raise TimeoutError("Model request deadline exhausted")
         deadline = time.monotonic() + request_budget
         attempts: list[ModelAttempt] = []
-        for attempt in range(self.config.max_retries + 1):
+        attempt = 0
+        while self.config.max_retries < 0 or attempt <= self.config.max_retries:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("Model request deadline exhausted")
@@ -176,6 +177,8 @@ class OpenAIChatModel:
             attempt_started = time.perf_counter()
             try:
                 response = client.chat.completions.create(**request)
+                if self.config.retry_all_errors and not _has_response_payload(response):
+                    raise ValueError("Model returned an empty response without tool calls")
                 attempts.append(
                     ModelAttempt(
                         attempt=attempt + 1,
@@ -185,20 +188,41 @@ class OpenAIChatModel:
                 )
                 return response, tuple(attempts)
             except Exception as exc:
-                if attempt >= self.config.max_retries or not _retryable(exc):
+                retryable = self.config.retry_all_errors or _retryable(exc)
+                if (
+                    (self.config.max_retries >= 0 and attempt >= self.config.max_retries)
+                    or not retryable
+                ):
                     attempts.append(_failed_attempt(attempt, attempt_started, exc, None))
                     raise
                 remaining = deadline - time.monotonic()
                 retry_after = _retry_after_seconds(exc)
+                configured_backoff = self.config.retry_backoff_seconds
                 delay = min(
-                    retry_after if retry_after is not None else float(2**attempt),
+                    configured_backoff
+                    if configured_backoff is not None
+                    else retry_after
+                    if retry_after is not None
+                    else float(2**attempt),
                     max(0.0, remaining),
                 )
                 attempts.append(_failed_attempt(attempt, attempt_started, exc, delay))
                 if delay <= 0:
                     raise TimeoutError("Model request deadline exhausted") from exc
                 time.sleep(delay)
+                attempt += 1
         raise AssertionError("unreachable")
+
+
+def _has_response_payload(response: Any) -> bool:
+    choices = getattr(response, "choices", None) or []
+    if not choices:
+        return False
+    message = getattr(choices[0], "message", None)
+    if message is None:
+        return False
+    content = getattr(message, "content", None)
+    return bool((isinstance(content, str) and content.strip()) or getattr(message, "tool_calls", None))
 
 
 def _extra_message_field(message: Any, name: str) -> Any:

@@ -320,7 +320,7 @@ class GoalGraphAdaptation:
         def invoke(**kwargs: Any) -> Any:
             result = self._runtime.invoke(
                 name,
-                target=self._current_target,
+                graph_target=self._current_target,
                 consumes=self._declared_inputs,
                 **kwargs,
             )

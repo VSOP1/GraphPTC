@@ -11,6 +11,7 @@ import os
 import queue
 import re
 import signal
+import sys
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -553,13 +554,25 @@ def _safe_builtins() -> dict[str, Any]:
 
 @contextlib.contextmanager
 def _execution_timeout(seconds: float | None):
-    if (
-        seconds is None
-        or seconds <= 0
-        or not hasattr(signal, "SIGALRM")
-        or threading.current_thread() is not threading.main_thread()
-    ):
+    if seconds is None or seconds <= 0:
         yield
+        return
+
+    if not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        deadline = time.monotonic() + seconds
+        previous = sys.gettrace()
+
+        def check_deadline(frame: Any, event: str, arg: Any) -> Any:
+            del frame, event, arg
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"PTC block timed out after {seconds:g} seconds")
+            return check_deadline
+
+        sys.settrace(check_deadline)
+        try:
+            yield
+        finally:
+            sys.settrace(previous)
         return
 
     def expired(signum: int, frame: Any) -> None:

@@ -1,0 +1,66 @@
+{
+  "frozen_at": "2026-08-28T00:42:00.9719120+08:00",
+  "method_name": "GraphPTC",
+  "benchmark_metadata": {
+    "benchmark": "DeepPlanning v1.1",
+    "official_commit": "31a4d36d123688581a9e9744427272b33ce940e0",
+    "data_revision": "213876cce679f993a476d01042e13d111c0e3648"
+  },
+  "selection": {
+    "tasks_per_arm": 360,
+    "run_label": "matched-single",
+    "run_indices": [2],
+    "arms": ["GraphPTC", "Fewshot PTC"],
+    "matched_single_run": true,
+    "leaderboard_equivalent": false,
+    "workers_per_arm": 5,
+    "total_concurrency": 10,
+    "restart_from_scratch": true
+  },
+  "sha256": {
+    "configs/deepplanning/graphptc.toml": "b0ebb5a51633cd1642f38b16d028deb0817e9c606cd7d45de8a1232898288300",
+    "configs/deepplanning/fewshot-ptc.toml": "ad5a3b13467824f3b6d2466fd2dbde39cce96a86078e639aba0fe695811b1e90",
+    "src/graphptc/deepplanning_benchmark.py": "d19177db0b5bc24a09bd5f35f3e7aab6ff21a016cfdd2417a949497e68b2e863",
+    "src/graphptc/deepplanning_runtime.py": "158a28ae9bf2225c5e6492680931abd714bcbb61c3e7debbd4a578edc27c6478",
+    "src/graphptc/deepplanning_worker.py": "af946bf18150297040882ff5db5715eeef82f6a9ac806050c7152c2ae0e8b01c",
+    "src/graphptc/deepplanning_official.py": "5f270a58a428d5121f356a14f95a1efc262a37ee6771d984b13af7c63e3a7555",
+    "src/graphptc/model.py": "7fb7a60bc1bcd439f4ab8220e7ac7ec7ede91012da5f54ff31fe959a4f1c3276",
+    "src/graphptc/config.py": "f8a7a0d9743ad658ff9d992ac53680e8e9eb9938de492fc56a07ab65ad522dfa",
+    "data/deepplanning/official-manifest.json": "3af46be20882cdcde841e1ed50a02876cc39cd2c5ecc29cb25afa5c21000c34c",
+    "data/deepplanning/environment.freeze.txt": "6dba73c3af3e5cb1c4f1ab25479ccdd37dac5548b98393f6b04172d57942ecb4",
+    "runs/deepplanning/api-probes/sustained-run-1-diagnosis.json": "10b947c67376606eb92d9bcbe307af2c77bfb6035c6cffba06cc74f767bbceb3",
+    "runs/deepplanning/matched-single/graphptc/run-1/PAUSED.json": "889829e9500e39951000bccbfc65d213619f1108246ff0126c305987d3242150",
+    "runs/deepplanning/matched-single/fewshot-ptc/run-1/PAUSED.json": "628a778f00255996e7cfe5ba2230f851299bb704f4183f274bd430832b06f19d",
+    "runs/deepplanning/matched-single/graphptc/run-1/config.toml": "43577b9edf62b60dab465fe7dd7611894cc9789006b7dbf893bb22493a29b7db",
+    "runs/deepplanning/matched-single/fewshot-ptc/run-1/config.toml": "a13e36b6a398587b40f9fea5ee692c2de13e47fd7af27fb2dd23a989f4be3794"
+  },
+  "rules": {
+    "max_model_calls": 400,
+    "max_ptc_blocks": 399,
+    "max_stdout_chars": 8000,
+    "model_total_attempts": 30,
+    "model_retries_after_initial_attempt": 29,
+    "model_retry_backoff_seconds": 1.5,
+    "model_retry_all_errors": true,
+    "sdk_hidden_retries": 0,
+    "conversion_retries": 30,
+    "official_task_wall_clock_seconds": null,
+    "selected_task_wall_clock": "unbounded",
+    "graph_inspection_enabled": false,
+    "selected_failures_retried": false
+  },
+  "predecessor_runs": [
+    {
+      "run_label": "matched-single",
+      "run_index": 1,
+      "status": "paused",
+      "scoring_eligible": false,
+      "reason": "sustained_provider_rate_limiting_at_total_concurrency_20"
+    }
+  ],
+  "concurrency_decision": {
+    "workers_per_arm": 5,
+    "total_concurrency": 10,
+    "evidence": "runs/deepplanning/api-probes/sustained-run-1-diagnosis.json"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "benchmark": "tau-Knowledge",
+  "official_version": "1.0.1",
+  "official_tag": "v1.0.1",
+  "official_commit": "fc0055dc4e0a316c3f83133267fbd6faaa770992",
+  "source_repository": {
+    "url": "https://github.com/sierra-research/tau2-bench.git",
+    "tag": "v1.0.1"
+  },
+  "required_runtime_files": {
+    "data/tau2/user_simulator/simulation_guidelines.md": "b55a28a1d5eaf81e72bdc263307d9f512fe49a99",
+    "data/tau2/user_simulator/simulation_guidelines_tools.md": "a7235b1ddf8d0d1e2edc9b1708916f37b0aac045"
+  },
+  "domain": "banking_knowledge",
+  "task_split_name": "base",
+  "expected_tasks": 97,
+  "trial_indices": [0],
+  "retrieval_config": "bm25",
+  "retrieval_config_kwargs": {
+    "top_k": 10
+  },
+  "bm25_index": {
+    "implementation": "rank_bm25.BM25Okapi",
+    "document_preprocessor": "bm25_indexer",
+    "state_key": "bm25",
+    "doc_ids_state_key": "bm25_doc_ids",
+    "query_key": "query",
+    "input_preprocessors": [],
+    "postprocessors": []
+  },
+  "knowledge_base": {
+    "document_count": 698,
+    "document_git_manifest_sha256": "cf5cd7780303e61d84bcbdfc492f703abe94924139a8598fa8f15f33659262f3",
+    "prompt_count": 17,
+    "prompt_git_manifest_sha256": "2a00afadc908a6fa7922bc530350e79301182f75bc77a2a99557cd6320daa8ec"
+  },
+  "task_git_manifest_sha256": "1e35886d913cb522a6fddc48b5f8d04168d57ec973db74cfde3e6fa0b40f2366",
+  "retrieval_probe_queries": [
+    "checking account monthly fee",
+    "credit card cash back annual fee",
+    "international transfer limit"
+  ],
+  "smoke_task_ids": [
+    "task_001",
+    "task_046"
+  ]
+}

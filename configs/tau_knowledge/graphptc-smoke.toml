@@ -1,0 +1,42 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 32000
+thinking = "disabled"
+timeout_seconds = 600
+max_retries = 8
+temperature = 0.0
+
+[runtime]
+max_stdout_chars = 8000
+max_turns = 100
+max_ptc_blocks = 100
+task_timeout_seconds = 3600
+code_timeout_seconds = 300
+graph_adaptation_mode = "generic"
+graph_inspection_enabled = false
+
+[tau3]
+root = "D:/graphptc-tau2-git"
+worker_command = ["D:/graphptc-tau2-git/.venv/Scripts/python.exe", "-X", "utf8", "D:/GraphPTC/src/graphptc/tau_knowledge_worker.py"]
+results_path = "runs/tau_knowledge/smoke/valid/graphptc/results.jsonl"
+report_path = "runs/tau_knowledge/smoke/valid/graphptc/report.json"
+artifact_dir = "runs/tau_knowledge/smoke/valid/graphptc/artifacts"
+graph_dir = "runs/tau_knowledge/smoke/valid/graphptc/graphs"
+progress_path = "runs/tau_knowledge/smoke/valid/graphptc/progress.jsonl"
+domains = ["banking_knowledge"]
+trials = 1
+workers = 1
+max_steps = 200
+max_errors = 10
+seed = 300
+task_split_name = "base"
+prompt_variant = "tau3-ptc-fewshot"
+official_commit = "fc0055dc4e0a316c3f83133267fbd6faaa770992"
+user_model = "openai/mimo-v2.5"
+user_api_key_env = "MIMO_API_KEY"
+user_base_url = "https://api.xiaomimimo.com/v1"
+enforce_communication_protocol = false
+task_max_retries = 0
+retry_delay_seconds = 1.0

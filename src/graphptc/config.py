@@ -18,7 +18,10 @@ class ModelConfig:
     max_completion_tokens: int = 32_000
     thinking: str | None = None
     timeout_seconds: float = 600.0
+    # A negative value retries retryable transport failures until the request deadline.
     max_retries: int = 8
+    retry_backoff_seconds: float | None = None
+    retry_all_errors: bool = False
     temperature: float | None = None
     top_p: float | None = None
 
@@ -156,6 +159,41 @@ class MCPMarkConfig:
 
 
 @dataclass(frozen=True)
+class APIFlowConfig:
+    root: str = "D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0"
+    official_worker_command: tuple[str, ...] = ()
+    bank_path: Path = Path("D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0/tasks/v1.0")
+    bank_sha256: str = "abc3a823386b7f755e326017191a2e42596bf884ed8e60c44ac1d6e1cc0b615e"
+    task_manifest_path: Path = Path("data/apiflow/v1.0-467.json")
+    results_path: Path = Path("runs/apiflow/results.jsonl")
+    report_path: Path = Path("runs/apiflow/report.json")
+    artifact_dir: Path = Path("runs/apiflow/artifacts")
+    graph_dir: Path = Path("runs/apiflow/graphs")
+    progress_path: Path = Path("runs/apiflow/progress.jsonl")
+    expected_tasks: int = 467
+    epochs: int = 1
+    workers: int = 1
+    prompt_variant: str = "apiflow-ptc-fewshot"
+
+
+@dataclass(frozen=True)
+class DeepPlanningConfig:
+    root: str = "D:/GraphPTC-DeepPlanning"
+    python_command: str = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
+    official_commit: str = "31a4d36d123688581a9e9744427272b33ce940e0"
+    data_revision: str = "213876cce679f993a476d01042e13d111c0e3648"
+    results_dir: Path = Path("runs/deepplanning/graphptc")
+    progress_path: Path = Path("runs/deepplanning/graphptc/progress.jsonl")
+    workers: int = 1
+    run_count: int = 4
+    expected_travel_tasks_per_language: int = 120
+    expected_shopping_tasks: tuple[int, int, int] = (50, 50, 20)
+    max_model_calls: int = 400
+    conversion_model: str = "qwen-plus"
+    prompt_variant: str = "deepplanning-ptc-fewshot"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -206,6 +244,8 @@ class ExperimentConfig:
     agent_diff: AgentDiffConfig
     tau3: Tau3Config
     mcpmark: MCPMarkConfig
+    apiflow: APIFlowConfig
+    deepplanning: DeepPlanningConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -306,6 +346,34 @@ class ExperimentConfig:
             if key in mcpmark:
                 mcpmark[key] = tuple(mcpmark[key])
 
+        apiflow = dict(raw.get("apiflow", {}))
+        for key in (
+            "bank_path",
+            "task_manifest_path",
+            "results_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+            "progress_path",
+        ):
+            value = apiflow.get(key)
+            if value is not None:
+                candidate = Path(value)
+                apiflow[key] = candidate if candidate.is_absolute() else base / candidate
+        if "official_worker_command" in apiflow:
+            apiflow["official_worker_command"] = tuple(apiflow["official_worker_command"])
+
+        deepplanning = dict(raw.get("deepplanning", {}))
+        for key in ("results_dir", "progress_path"):
+            value = deepplanning.get(key)
+            if value is not None:
+                candidate = Path(value)
+                deepplanning[key] = candidate if candidate.is_absolute() else base / candidate
+        if "expected_shopping_tasks" in deepplanning:
+            deepplanning["expected_shopping_tasks"] = tuple(
+                deepplanning["expected_shopping_tasks"]
+            )
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -318,6 +386,8 @@ class ExperimentConfig:
             agent_diff=_build(AgentDiffConfig, agent_diff),
             tau3=_build(Tau3Config, tau3),
             mcpmark=_build(MCPMarkConfig, mcpmark),
+            apiflow=_build(APIFlowConfig, apiflow),
+            deepplanning=_build(DeepPlanningConfig, deepplanning),
         )
 
     def require_api_key(self, env_name: str) -> str:

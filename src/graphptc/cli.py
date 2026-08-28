@@ -48,6 +48,20 @@ from .mcpmark_benchmark import (
     inspect_mcpmark,
     run_mcpmark_benchmark,
 )
+from .apiflow_benchmark import (
+    compare_apiflow_benchmarks,
+    evaluate_apiflow_benchmark,
+    inspect_apiflow,
+    run_apiflow_benchmark,
+)
+from .deepplanning_benchmark import (
+    compare_deepplanning_benchmarks,
+    compare_deepplanning_configs,
+    evaluate_deepplanning_benchmark,
+    inspect_deepplanning,
+    probe_deepplanning_api,
+    run_deepplanning_benchmark,
+)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
@@ -58,6 +72,8 @@ TOOL_SANDBOX_CONFIG = "configs/toolsandbox/graphptc-smoke.toml"
 AGENT_DIFF_CONFIG = "configs/agent_diff/graphptc-smoke.toml"
 TAU3_CONFIG = "configs/tau3/graphptc-smoke.toml"
 MCPMARK_CONFIG = "configs/mcpmark/graphptc-smoke5.toml"
+APIFLOW_CONFIG = "configs/apiflow/graphptc-smoke.toml"
+DEEPPLANNING_CONFIG = "configs/deepplanning/graphptc.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -278,6 +294,87 @@ def _run_command(
         baseline = ExperimentConfig.from_toml(args.baseline_config)
         report = compare_mcpmark_benchmarks(config, baseline, args.output)
         print(json.dumps(report["overall"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-apiflow":
+        manifest = inspect_apiflow(config)
+        print(
+            json.dumps(
+                {
+                    "release": manifest["release"],
+                    "bank_sha256": manifest["bank_sha256"],
+                    "expected_tasks": manifest["expected_tasks"],
+                    "epochs": manifest["epochs"],
+                    "environment": manifest["environment"],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "run-apiflow":
+        summary = run_apiflow_benchmark(
+            config, task_ids=args.task_id, limit=args.limit
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 else 1
+
+    if args.command == "evaluate-apiflow":
+        report = evaluate_apiflow_benchmark(config)
+        print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-apiflow":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_apiflow_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["overall"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-deepplanning":
+        print(json.dumps(inspect_deepplanning(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "probe-deepplanning-api":
+        report = probe_deepplanning_api(
+            config,
+            concurrencies=args.concurrency or (10, 20, 40),
+            waves=args.waves,
+            output=args.output,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if report["highest_stable_total_concurrency"] is not None else 1
+
+    if args.command == "run-deepplanning":
+        summary = run_deepplanning_benchmark(
+            config,
+            task_keys=args.task_key,
+            domains=args.domain,
+            run_index=args.run_index,
+            run_label=args.run_label,
+            limit=args.limit,
+            restart=args.restart,
+            progress=None,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 else 1
+
+    if args.command == "compare-deepplanning-configs":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        print(json.dumps(compare_deepplanning_configs(config, baseline), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "evaluate-deepplanning":
+        report = evaluate_deepplanning_benchmark(config, run_index=args.run_index, run_label=args.run_label)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if not any(report["failures"].values()) else 1
+
+    if args.command == "compare-deepplanning":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_deepplanning_benchmarks(
+            config, baseline, run_label=args.run_label, run_index=args.run_index, output=args.output
+        )
+        print(json.dumps({"paired_score": report["paired_score"], "graph_control": report["graph_control"], "operational_deltas": report["operational_deltas"]}, ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
@@ -505,6 +602,86 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("runs/mcpmark/paired-report.json"),
     )
+
+    apiflow_inspect = subparsers.add_parser(
+        "inspect-apiflow", help="Audit the frozen APIFlow-Bench 1.0 task bank."
+    )
+    _add_config_argument(apiflow_inspect, default=APIFLOW_CONFIG)
+
+    apiflow_run = subparsers.add_parser(
+        "run-apiflow", help="Run GraphPTC or Fewshot PTC on APIFlow-Bench 1.0."
+    )
+    _add_config_argument(apiflow_run, default=APIFLOW_CONFIG)
+    apiflow_run.add_argument("--limit", type=int)
+    apiflow_run.add_argument("--task-id", action="append", default=[])
+
+    apiflow_evaluate = subparsers.add_parser(
+        "evaluate-apiflow", help="Validate and summarize APIFlow-Bench results."
+    )
+    _add_config_argument(apiflow_evaluate, default=APIFLOW_CONFIG)
+
+    apiflow_compare = subparsers.add_parser(
+        "compare-apiflow", help="Compare paired GraphPTC and Fewshot PTC APIFlow results."
+    )
+    _add_config_argument(apiflow_compare, default="configs/apiflow/graphptc.toml")
+    apiflow_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/apiflow/fewshot-ptc.toml"),
+    )
+    apiflow_compare.add_argument(
+        "--output",
+        type=Path,
+        default=Path("runs/apiflow/paired-report.json"),
+    )
+
+    deepplanning_inspect = subparsers.add_parser(
+        "inspect-deepplanning", help="Audit the pinned official DeepPlanning v1.1 installation."
+    )
+    _add_config_argument(deepplanning_inspect, default=DEEPPLANNING_CONFIG)
+
+    deepplanning_probe = subparsers.add_parser(
+        "probe-deepplanning-api", help="Probe raw model API stability without DeepPlanning tasks or retries."
+    )
+    _add_config_argument(deepplanning_probe, default=DEEPPLANNING_CONFIG)
+    deepplanning_probe.add_argument("--concurrency", action="append", type=int, default=[])
+    deepplanning_probe.add_argument("--waves", type=int, default=2)
+    deepplanning_probe.add_argument("--output", type=Path)
+
+    deepplanning_run = subparsers.add_parser(
+        "run-deepplanning", help="Run GraphPTC or Fewshot PTC on official DeepPlanning tools."
+    )
+    _add_config_argument(deepplanning_run, default=DEEPPLANNING_CONFIG)
+    deepplanning_run.add_argument("--task-key", action="append", default=[])
+    deepplanning_run.add_argument("--domain", action="append", default=[])
+    deepplanning_run.add_argument("--run-index", type=int, default=0)
+    deepplanning_run.add_argument("--run-label", default="full")
+    deepplanning_run.add_argument("--limit", type=int)
+    deepplanning_run.add_argument("--restart", action="store_true")
+
+    deepplanning_compare = subparsers.add_parser(
+        "compare-deepplanning-configs", help="Verify the matched DeepPlanning arm configs."
+    )
+    _add_config_argument(deepplanning_compare, default=DEEPPLANNING_CONFIG)
+    deepplanning_compare.add_argument(
+        "--baseline-config", type=Path, default=Path("configs/deepplanning/fewshot-ptc.toml")
+    )
+
+    deepplanning_evaluate = subparsers.add_parser(
+        "evaluate-deepplanning", help="Run official DeepPlanning conversion, evaluators, and aggregation."
+    )
+    _add_config_argument(deepplanning_evaluate, default=DEEPPLANNING_CONFIG)
+    deepplanning_evaluate.add_argument("--run-index", type=int, default=0)
+    deepplanning_evaluate.add_argument("--run-label", default="full")
+
+    deepplanning_result_compare = subparsers.add_parser(
+        "compare-deepplanning", help="Create a matched paired DeepPlanning result report."
+    )
+    _add_config_argument(deepplanning_result_compare, default=DEEPPLANNING_CONFIG)
+    deepplanning_result_compare.add_argument("--baseline-config", type=Path, default=Path("configs/deepplanning/fewshot-ptc.toml"))
+    deepplanning_result_compare.add_argument("--run-label", default="full")
+    deepplanning_result_compare.add_argument("--run-index", type=int, default=0)
+    deepplanning_result_compare.add_argument("--output", type=Path)
 
     return parser
 

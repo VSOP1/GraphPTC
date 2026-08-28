@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from graphptc.episode_graph import EpisodeGraph
 from graphptc.graph_agent import GraphContextProjector, GraphProgressTracker
+from graphptc.goal_adaptation import GoalGraphAdaptation
 from graphptc.tool_effects import ToolEffectContract, ToolGraphRuntime
 
 
@@ -49,19 +50,19 @@ def test_generic_graph_runtime_tracks_non_retrieval_tools_and_effects() -> None:
         ToolEffectContract(name="update_inventory", effect="write"),
     )
 
-    rows = runtime.invoke("lookup_rows", target="task", table="orders")
-    reused_rows = runtime.invoke("lookup_rows", target="task", table="orders")
+    rows = runtime.invoke("lookup_rows", graph_target="task", table="orders")
+    reused_rows = runtime.invoke("lookup_rows", graph_target="task", table="orders")
     total = runtime.invoke(
         "aggregate_values",
-        target="task",
+        graph_target="task",
         consumes=(rows.artifact_id or "",),
         values=rows.value,
     )
     first_write = runtime.invoke(
-        "update_inventory", target="task", item="widget", delta=-total.value
+        "update_inventory", graph_target="task", item="widget", delta=-total.value
     )
     second_write = runtime.invoke(
-        "update_inventory", target="task", item="widget", delta=total.value
+        "update_inventory", graph_target="task", item="widget", delta=total.value
     )
 
     assert reused_rows.reused is True
@@ -126,7 +127,7 @@ def test_graph_progress_tracker_detects_equivalent_artifact_loop() -> None:
     tracker = GraphProgressTracker(graph)
     observations = []
     for index in range(1, 4):
-        call = runtime.invoke("read_value", target="task", key="x")
+        call = runtime.invoke("read_value", graph_target="task", key="x")
         block_id = f"block:{index}"
         graph.add_node(block_id, "BLOCK", {})
         graph.add_edge("executes", block_id, call.action_id)
@@ -135,3 +136,41 @@ def test_graph_progress_tracker_detects_equivalent_artifact_loop() -> None:
     assert observations[0]["progressed"] is True
     assert observations[1]["progressed"] is False
     assert observations[2]["stagnant_streak"] == 2
+
+
+def test_graph_tool_wrapper_preserves_a_tool_argument_named_target() -> None:
+    def execute(*, target: dict | None = None, request: dict | None = None) -> dict:
+        return {"target": target, "request": request}
+
+    controller = GoalGraphAdaptation(
+        {"execute": execute},
+        {"execute": ToolEffectContract(name="execute", effect="write")},
+        task="execute an API request",
+        expose_graph_api=False,
+    )
+    wrapped = controller.runtime_functions()[0]
+
+    result = wrapped(target={"kind": "request", "id": "req-1"})
+
+    assert result["target"] == {"kind": "request", "id": "req-1"}
+
+
+def test_tool_contract_can_redact_graph_artifact_without_changing_tool_result() -> None:
+    graph = EpisodeGraph(task="read a credential")
+    runtime = ToolGraphRuntime(graph)
+
+    def read_credential(*, name: str) -> dict:
+        return {"name": name, "token": "private-value"}
+
+    runtime.register(
+        read_credential,
+        ToolEffectContract(
+            name="read_credential",
+            normalize_artifact=lambda value: {**value, "token": "<redacted>"},
+        ),
+    )
+
+    result = runtime.invoke("read_credential", name="service")
+
+    assert result.value["token"] == "private-value"
+    assert graph.load_artifact(result.artifact_id or "")["token"] == "<redacted>"

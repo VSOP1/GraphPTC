@@ -1,0 +1,40 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 32768
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = -1
+retry_all_errors = false
+temperature = 1.0
+
+[runtime]
+max_turns = 100
+max_ptc_blocks = 99
+task_timeout_seconds = 7200.0
+code_timeout_seconds = 120.0
+max_stdout_chars = 8000
+finalization_max_tokens = 32768
+max_compactions = 0
+graph_adaptation_mode = "generic"
+graph_inspection_enabled = false
+
+[apiflow]
+root = "D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0"
+official_worker_command = [
+  "D:/APIFlow-Bench-v1.0/.venv/Scripts/python.exe",
+  "D:/GraphPTC/src/graphptc/apiflow_official_worker.py",
+]
+bank_path = "D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0/tasks/v1.0"
+bank_sha256 = "abc3a823386b7f755e326017191a2e42596bf884ed8e60c44ac1d6e1cc0b615e"
+task_manifest_path = "data/apiflow/v1.0-467.json"
+results_path = "runs/apiflow/temperature1-epoch1/graphptc/results.jsonl"
+report_path = "runs/apiflow/temperature1-epoch1/graphptc/report.json"
+artifact_dir = "runs/apiflow/temperature1-epoch1/graphptc/artifacts"
+graph_dir = "runs/apiflow/temperature1-epoch1/graphptc/graphs"
+progress_path = "runs/apiflow/temperature1-epoch1/graphptc/progress.jsonl"
+expected_tasks = 467
+epochs = 1
+workers = 4
+prompt_variant = "apiflow-ptc-fewshot"

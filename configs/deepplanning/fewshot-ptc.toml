@@ -1,0 +1,37 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 4096
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = 29
+retry_backoff_seconds = 1.5
+retry_all_errors = true
+temperature = 0.0
+
+[runtime]
+max_turns = 400
+max_ptc_blocks = 399
+task_timeout_seconds = inf
+code_timeout_seconds = 300.0
+max_stdout_chars = 8000
+finalization_max_tokens = 4096
+max_compactions = 0
+graph_adaptation_mode = "off"
+graph_inspection_enabled = false
+
+[deepplanning]
+root = "D:/GraphPTC-DeepPlanning"
+python_command = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
+official_commit = "31a4d36d123688581a9e9744427272b33ce940e0"
+data_revision = "213876cce679f993a476d01042e13d111c0e3648"
+results_dir = "runs/deepplanning"
+progress_path = "runs/deepplanning/progress.jsonl"
+workers = 5
+run_count = 4
+expected_travel_tasks_per_language = 120
+expected_shopping_tasks = [50, 50, 20]
+max_model_calls = 400
+conversion_model = "mimo-v2.5"
+prompt_variant = "deepplanning-ptc-fewshot"
