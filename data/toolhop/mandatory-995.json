@@ -1,0 +1,6990 @@
+{
+  "schema_version": 1,
+  "benchmark": "ToolHop",
+  "scenario": "Mandatory",
+  "official_commit": "b439d7279af359fda46e8117ae4f0245b75f5c6b",
+  "data_sha256": "0a51f71a44b7025645e452123af3caf2e348301922af91778e268db0188a7fab",
+  "expected_tasks": 995,
+  "epochs": 1,
+  "environment": {
+    "python": "3.11.1",
+    "executable": "D:\\ToolHopSource\\.venv\\Scripts\\python.exe",
+    "packages": {
+      "Babel": "2.17.0",
+      "dicttoxml": "1.7.16",
+      "holidays": "0.80",
+      "numpy": "2.3.2",
+      "python-dateutil": "2.9.0.post0",
+      "pytz": "2025.2",
+      "roman": "5.1",
+      "sympy": "1.14.0"
+    }
+  },
+  "tasks": [
+    {
+      "task_id": "0",
+      "domain": "landscape architecture",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "1",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "2",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "3",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "4",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "5",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "6",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "7",
+      "domain": "Television",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "8",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "9",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "10",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "11",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "12",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "13",
+      "domain": "Alternative Medicine",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "14",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "15",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "16",
+      "domain": "entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "17",
+      "domain": "Comics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "18",
+      "domain": "architecture",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "19",
+      "domain": "Alternative Medicine",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "20",
+      "domain": "comics",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "21",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "22",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "23",
+      "domain": "holistic health",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "24",
+      "domain": "entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "25",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "26",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "27",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "28",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "29",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "30",
+      "domain": "Literature",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "31",
+      "domain": "Infrastructure",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "32",
+      "domain": "History of Science",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "33",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "34",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "35",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "36",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "37",
+      "domain": "video games",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "38",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "39",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "40",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "41",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "42",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "43",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "44",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "45",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "46",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "47",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "48",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "49",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "50",
+      "domain": "psychology",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "51",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "52",
+      "domain": "Literature",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "53",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "54",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "55",
+      "domain": "Entertainment",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "56",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "57",
+      "domain": "Biography",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "58",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "59",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "60",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "61",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "62",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "63",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "64",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "65",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "66",
+      "domain": "Video Games",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "67",
+      "domain": "Manga",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "68",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "69",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "70",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "71",
+      "domain": "history",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "72",
+      "domain": "Pop Culture",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "73",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "74",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "75",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "76",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "77",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "78",
+      "domain": "video games",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "79",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "80",
+      "domain": "Politics",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "81",
+      "domain": "Law",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "82",
+      "domain": "video games",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "83",
+      "domain": "television",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "84",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "85",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "86",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "87",
+      "domain": "sports",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "88",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "89",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "90",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "91",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "92",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "93",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "94",
+      "domain": "Law",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "95",
+      "domain": "Law",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "96",
+      "domain": "Music",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "97",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "98",
+      "domain": "Entertainment",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "99",
+      "domain": "television",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "100",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "101",
+      "domain": "Television",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "102",
+      "domain": "landscape architecture",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "103",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "104",
+      "domain": "Landscape Architecture",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "105",
+      "domain": "entertainment",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "106",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "107",
+      "domain": "video games",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "108",
+      "domain": "Video Games",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "109",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "110",
+      "domain": "television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "111",
+      "domain": "Psychology",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "112",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "113",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "114",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "115",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "116",
+      "domain": "Military History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "117",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "118",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "119",
+      "domain": "Music",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "120",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "121",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "122",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "123",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "124",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "125",
+      "domain": "Literature",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "126",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "127",
+      "domain": "Local History",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "128",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "129",
+      "domain": "Computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "130",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "131",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "132",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "133",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "134",
+      "domain": "Literature",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "135",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "136",
+      "domain": "television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "137",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "138",
+      "domain": "sports",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "139",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "140",
+      "domain": "Politics",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "141",
+      "domain": "video games",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "142",
+      "domain": "Music",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "143",
+      "domain": "video games",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "144",
+      "domain": "politics",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "145",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "146",
+      "domain": "Music",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "147",
+      "domain": "music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "148",
+      "domain": "video games",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "149",
+      "domain": "Infrastructure",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "150",
+      "domain": "Science History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "151",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "152",
+      "domain": "video games",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "153",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "154",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "155",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "156",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "157",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "158",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "159",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "160",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "161",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "162",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "163",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "164",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "165",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "166",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "167",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "168",
+      "domain": "Royal History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "169",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "170",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "171",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "172",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "173",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "174",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "175",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "176",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "177",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "178",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "179",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "180",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "181",
+      "domain": "Personal Event",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "182",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "183",
+      "domain": "music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "184",
+      "domain": "Celebrity",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "185",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "186",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "187",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "188",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "189",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "190",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "191",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "192",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "193",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "194",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "195",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "196",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "197",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "198",
+      "domain": "Time Zone Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "199",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "200",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "201",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "202",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "203",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "204",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "205",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "206",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "207",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "208",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "209",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "210",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "211",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "212",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "213",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "214",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "215",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "216",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "217",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "218",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "219",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "220",
+      "domain": "Personal Events",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "221",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "222",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "223",
+      "domain": "genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "224",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "225",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "226",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "227",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "228",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "229",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "230",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "231",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "232",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "233",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "234",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "235",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "236",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "237",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "238",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "239",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "240",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "241",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "242",
+      "domain": "Personal Events",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "243",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "244",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "245",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "246",
+      "domain": "Family",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "247",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "248",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "249",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "250",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "251",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "252",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "253",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "254",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "255",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "256",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "257",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "258",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "259",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "260",
+      "domain": "Biography",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "261",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "262",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "263",
+      "domain": "linguistics",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "264",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "265",
+      "domain": "Date Calculation",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "266",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "267",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "268",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "269",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "270",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "271",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "272",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "273",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "274",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "275",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "276",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "277",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "278",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "279",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "280",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "281",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "282",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "283",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "284",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "285",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "286",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "287",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "288",
+      "domain": "Biography",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "289",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "290",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "291",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "292",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "293",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "294",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "295",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "296",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "297",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "298",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "299",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "300",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "301",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "302",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "303",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "304",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "305",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "306",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "307",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "308",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "309",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "310",
+      "domain": "Biography",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "311",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "312",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "313",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "314",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "315",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "316",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "317",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "318",
+      "domain": "Personal History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "319",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "320",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "321",
+      "domain": "genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "322",
+      "domain": "Date Calculation",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "323",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "324",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "325",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "326",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "327",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "328",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "329",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "330",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "331",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "332",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "333",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "334",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "335",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "336",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "337",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "338",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "339",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "340",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "341",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "342",
+      "domain": "Computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "343",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "344",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "345",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "346",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "347",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "348",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "349",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "350",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "351",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "352",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "353",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "354",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "355",
+      "domain": "Names",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "356",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "357",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "358",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "359",
+      "domain": "Royal History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "360",
+      "domain": "Biography",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "361",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "362",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "363",
+      "domain": "cinema",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "364",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "365",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "366",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "367",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "368",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "369",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "370",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "371",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "372",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "373",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "374",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "375",
+      "domain": "Names",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "376",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "377",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "378",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "379",
+      "domain": "cinema",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "380",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "381",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "382",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "383",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "384",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "385",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "386",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "387",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "388",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "389",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "390",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "391",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "392",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "393",
+      "domain": "Names",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "394",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "395",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "396",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "397",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "398",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "399",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "400",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "401",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "402",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "403",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "404",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "405",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "406",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "407",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "408",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "409",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "410",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "411",
+      "domain": "Names",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "412",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "413",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "414",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "415",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "416",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "417",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "418",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "419",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "420",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "421",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "422",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "423",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "424",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "425",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "426",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "427",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "428",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "429",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "430",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "431",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "432",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "433",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "434",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "435",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "436",
+      "domain": "Celebrity",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "437",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "438",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "439",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "440",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "441",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "442",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "443",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "444",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "445",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "446",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "447",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "448",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "449",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "450",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "451",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "452",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "453",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "454",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "455",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "456",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "457",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "458",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "459",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "460",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "461",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "462",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "463",
+      "domain": "landscape architecture",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "464",
+      "domain": "Date Calculation",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "465",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "466",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "467",
+      "domain": "entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "468",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "469",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "470",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "471",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "472",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "473",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "474",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "475",
+      "domain": "Criminal Justice",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "476",
+      "domain": "Architecture",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "477",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "478",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "479",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "480",
+      "domain": "Film History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "481",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "482",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "483",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "484",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "485",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "486",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "487",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "488",
+      "domain": "Entertainment",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "489",
+      "domain": "Law",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "490",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "491",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "492",
+      "domain": "Manga",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "493",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "494",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "495",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "496",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "497",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "498",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "499",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "500",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "501",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "502",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "503",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "504",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "505",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "506",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "507",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "508",
+      "domain": "Film History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "509",
+      "domain": "sports",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "510",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "511",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "512",
+      "domain": "Television",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "513",
+      "domain": "music",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "514",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "515",
+      "domain": "Aerospace",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "516",
+      "domain": "Music History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "517",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "518",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "519",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "520",
+      "domain": "entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "521",
+      "domain": "video games",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "522",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "523",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "524",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "525",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "526",
+      "domain": "Entertainment",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "527",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "528",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "529",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "530",
+      "domain": "law",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "531",
+      "domain": "sports",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "532",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "533",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "534",
+      "domain": "sports",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "535",
+      "domain": "Entertainment",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "536",
+      "domain": "Literature",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "537",
+      "domain": "Criminal Justice",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "538",
+      "domain": "Law",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "539",
+      "domain": "Music",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "540",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "541",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "542",
+      "domain": "Entertainment",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "543",
+      "domain": "criminal justice",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "544",
+      "domain": "urban planning",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "545",
+      "domain": "History of Science",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "546",
+      "domain": "Landscape Architecture",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "547",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "548",
+      "domain": "Television",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "549",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "550",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "551",
+      "domain": "Video Games",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "552",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "553",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "554",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "555",
+      "domain": "Irish entertainment",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "556",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "557",
+      "domain": "sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "558",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "559",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "560",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "561",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "562",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "563",
+      "domain": "Sports",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "564",
+      "domain": "Politics",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "565",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "566",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "567",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "568",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "569",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "570",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "571",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "572",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "573",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "574",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "575",
+      "domain": "Physics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "576",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "577",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "578",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "579",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "580",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "581",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "582",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "583",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "584",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "585",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "586",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "587",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "588",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "589",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "590",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "591",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "592",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "593",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "594",
+      "domain": "law",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "595",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "596",
+      "domain": "Royal",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "597",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "598",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "599",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "600",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "601",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "602",
+      "domain": "programming",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "603",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "604",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "605",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "606",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "607",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "608",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "609",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "610",
+      "domain": "Personal Information",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "611",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "612",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "613",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "614",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "615",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "616",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "617",
+      "domain": "Date Calculation",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "618",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "619",
+      "domain": "Personal Information",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "620",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "621",
+      "domain": "Biography",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "622",
+      "domain": "Time Zones",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "623",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "624",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "625",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "626",
+      "domain": "Celebrity",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "627",
+      "domain": "film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "628",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "629",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "630",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "631",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "632",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "633",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "634",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "635",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "636",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "637",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "638",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "639",
+      "domain": "cinema",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "640",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "641",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "642",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "643",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "644",
+      "domain": "names",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "645",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "646",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "647",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "648",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "649",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "650",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "651",
+      "domain": "Royal",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "652",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "653",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "654",
+      "domain": "Date Calculation",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "655",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "656",
+      "domain": "names",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "657",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "658",
+      "domain": "names",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "659",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "660",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "661",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "662",
+      "domain": "Royal",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "663",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "664",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "665",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "666",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "667",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "668",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "669",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "670",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "671",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "672",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "673",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "674",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "675",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "676",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "677",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "678",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "679",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "680",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "681",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "682",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "683",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "684",
+      "domain": "history",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "685",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "686",
+      "domain": "Genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "687",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "688",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "689",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "690",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "691",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "692",
+      "domain": "Media",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "693",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "694",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "695",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "696",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "697",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "698",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "699",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "700",
+      "domain": "film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "701",
+      "domain": "Personal Information",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "702",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "703",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "704",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "705",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "706",
+      "domain": "Personal Information",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "707",
+      "domain": "genealogy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "708",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "709",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "710",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "711",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "712",
+      "domain": "family lineage",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "713",
+      "domain": "film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "714",
+      "domain": "Celebrity",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "715",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "716",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "717",
+      "domain": "Biography",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "718",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "719",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "720",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "721",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "722",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "723",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "724",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "725",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "726",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "727",
+      "domain": "Personal Events",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "728",
+      "domain": "Computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "729",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "730",
+      "domain": "Genealogy",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "731",
+      "domain": "cinema",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "732",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "733",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "734",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "735",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "736",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "737",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "738",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "739",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "740",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "741",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "742",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "743",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "744",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "745",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "746",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "747",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "748",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "749",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "750",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "751",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "752",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "753",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "754",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "755",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "756",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "757",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "758",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "759",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "760",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "761",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "762",
+      "domain": "Family",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "763",
+      "domain": "genealogy",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "764",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "765",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "766",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "767",
+      "domain": "Publishing History",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "768",
+      "domain": "Publishing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "769",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "770",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "771",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "772",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "773",
+      "domain": "film",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "774",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "775",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "776",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "777",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "778",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "779",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "780",
+      "domain": "Date Calculation",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "781",
+      "domain": "Time Zones",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "782",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "783",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "784",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "785",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "786",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "787",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "788",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "789",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "790",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "791",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "792",
+      "domain": "mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "793",
+      "domain": "Biography",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "794",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "795",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "796",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "797",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "798",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "799",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "800",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "801",
+      "domain": "Personal Information",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "802",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "803",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "804",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "805",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "806",
+      "domain": "film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "807",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "808",
+      "domain": "music",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "809",
+      "domain": "biography",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "810",
+      "domain": "Royal",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "811",
+      "domain": "Computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "812",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "813",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "814",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "815",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "816",
+      "domain": "Date Calculation",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "817",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "818",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "819",
+      "domain": "Music",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "820",
+      "domain": "Time Zones",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "821",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "822",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "823",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "824",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "825",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "826",
+      "domain": "Film",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "827",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "828",
+      "domain": "physics",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "829",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "830",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "831",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "832",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "833",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "834",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "835",
+      "domain": "Mathematics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "836",
+      "domain": "names",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "837",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "838",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "839",
+      "domain": "literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "840",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "841",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "842",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "843",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "844",
+      "domain": "History",
+      "answer_type": "character",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "845",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "846",
+      "domain": "Genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "847",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "848",
+      "domain": "Art",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "849",
+      "domain": "Art",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "850",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "851",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "852",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "853",
+      "domain": "Art Education",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "854",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "855",
+      "domain": "Art",
+      "answer_type": "character",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "856",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "857",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "858",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "859",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "860",
+      "domain": "Art",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "861",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "862",
+      "domain": "Literature",
+      "answer_type": "character",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "863",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "864",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "865",
+      "domain": "programming",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "866",
+      "domain": "music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "867",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "868",
+      "domain": "Music",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "869",
+      "domain": "Politics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "870",
+      "domain": "Genealogy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "871",
+      "domain": "Politics",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "872",
+      "domain": "Music",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "873",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "874",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "875",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "876",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "877",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "878",
+      "domain": "genealogy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "879",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "880",
+      "domain": "History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "881",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "882",
+      "domain": "History",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "883",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "884",
+      "domain": "Art History",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "885",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "886",
+      "domain": "History",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "887",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "888",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "889",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "890",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "891",
+      "domain": "art",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "892",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "893",
+      "domain": "Literature",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "894",
+      "domain": "Art",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "895",
+      "domain": "literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "896",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "897",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "898",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "899",
+      "domain": "literature",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "900",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "901",
+      "domain": "Entertainment",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "902",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "903",
+      "domain": "computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "904",
+      "domain": "entertainment",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "905",
+      "domain": "biography",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "906",
+      "domain": "Names",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "907",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "908",
+      "domain": "Entertainment",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "909",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "910",
+      "domain": "Family",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "911",
+      "domain": "Family",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "912",
+      "domain": "Entertainment",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "913",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "914",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "915",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "916",
+      "domain": "Family",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "917",
+      "domain": "politics",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "918",
+      "domain": "Film",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "919",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "920",
+      "domain": "Politics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "921",
+      "domain": "Politics",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "922",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 6,
+      "tools": 6
+    },
+    {
+      "task_id": "923",
+      "domain": "Linguistics",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "924",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "925",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "926",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "927",
+      "domain": "politics",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "928",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "929",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "930",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "931",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "932",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "933",
+      "domain": "politics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "934",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "935",
+      "domain": "Politics",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "936",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "937",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "938",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "939",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "940",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "941",
+      "domain": "British Royalty",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "942",
+      "domain": "British monarchy",
+      "answer_type": "letter",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "943",
+      "domain": "British monarchy",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "944",
+      "domain": "puzzle",
+      "answer_type": "string",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "945",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "946",
+      "domain": "Computing",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "947",
+      "domain": "linguistics",
+      "answer_type": "number",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "948",
+      "domain": "British Royalty",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "949",
+      "domain": "Linguistics",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "950",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "951",
+      "domain": "British Monarchy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "952",
+      "domain": "entertainment",
+      "answer_type": "string",
+      "subtasks": 7,
+      "tools": 7
+    },
+    {
+      "task_id": "953",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "954",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "955",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "956",
+      "domain": "British monarchy",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "957",
+      "domain": "Time Zone Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "958",
+      "domain": "time",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "959",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "960",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "961",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "962",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "963",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "964",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "965",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "966",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "967",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "968",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "969",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "970",
+      "domain": "Publishing",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "971",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "972",
+      "domain": "geography",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "973",
+      "domain": "Geography",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "974",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "975",
+      "domain": "Time Zone Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "976",
+      "domain": "Time Zones",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "977",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "978",
+      "domain": "History",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "979",
+      "domain": "Time Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "980",
+      "domain": "history",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "981",
+      "domain": "Politics",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "982",
+      "domain": "media",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "983",
+      "domain": "Film",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "984",
+      "domain": "Television",
+      "answer_type": "number",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "985",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "986",
+      "domain": "Literature",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "987",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "988",
+      "domain": "computing",
+      "answer_type": "string",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "989",
+      "domain": "Music",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "990",
+      "domain": "Film",
+      "answer_type": "number",
+      "subtasks": 4,
+      "tools": 4
+    },
+    {
+      "task_id": "991",
+      "domain": "History",
+      "answer_type": "date",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "992",
+      "domain": "Time Zones",
+      "answer_type": "number",
+      "subtasks": 3,
+      "tools": 3
+    },
+    {
+      "task_id": "993",
+      "domain": "Time Zone Conversion",
+      "answer_type": "datetime",
+      "subtasks": 5,
+      "tools": 5
+    },
+    {
+      "task_id": "994",
+      "domain": "Art",
+      "answer_type": "string",
+      "subtasks": 3,
+      "tools": 3
+    }
+  ]
+}

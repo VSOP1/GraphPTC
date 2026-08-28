@@ -177,6 +177,26 @@ class APIFlowConfig:
 
 
 @dataclass(frozen=True)
+class ToolHopConfig:
+    root: str = "D:/ToolHopSource"
+    dataset_path: Path = Path("D:/ToolHopSource/data/ToolHop.json")
+    official_worker_command: tuple[str, ...] = ()
+    official_commit: str = "b439d7279af359fda46e8117ae4f0245b75f5c6b"
+    data_sha256: str = "0a51f71a44b7025645e452123af3caf2e348301922af91778e268db0188a7fab"
+    task_manifest_path: Path = Path("data/toolhop/mandatory-995.json")
+    results_path: Path = Path("runs/toolhop/results.jsonl")
+    report_path: Path = Path("runs/toolhop/report.json")
+    artifact_dir: Path = Path("runs/toolhop/artifacts")
+    graph_dir: Path = Path("runs/toolhop/graphs")
+    progress_path: Path = Path("runs/toolhop/progress.jsonl")
+    scenario: str = "Mandatory"
+    expected_tasks: int = 995
+    epochs: int = 1
+    workers: int = 1
+    prompt_variant: str = "toolhop-ptc-fewshot"
+
+
+@dataclass(frozen=True)
 class DeepPlanningConfig:
     root: str = "D:/GraphPTC-DeepPlanning"
     python_command: str = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
@@ -245,6 +265,7 @@ class ExperimentConfig:
     tau3: Tau3Config
     mcpmark: MCPMarkConfig
     apiflow: APIFlowConfig
+    toolhop: ToolHopConfig
     deepplanning: DeepPlanningConfig
 
     @classmethod
@@ -363,6 +384,23 @@ class ExperimentConfig:
         if "official_worker_command" in apiflow:
             apiflow["official_worker_command"] = tuple(apiflow["official_worker_command"])
 
+        toolhop = dict(raw.get("toolhop", {}))
+        for key in (
+            "dataset_path",
+            "task_manifest_path",
+            "results_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+            "progress_path",
+        ):
+            value = toolhop.get(key)
+            if value is not None:
+                candidate = Path(value)
+                toolhop[key] = candidate if candidate.is_absolute() else base / candidate
+        if "official_worker_command" in toolhop:
+            toolhop["official_worker_command"] = tuple(toolhop["official_worker_command"])
+
         deepplanning = dict(raw.get("deepplanning", {}))
         for key in ("results_dir", "progress_path"):
             value = deepplanning.get(key)
@@ -387,6 +425,7 @@ class ExperimentConfig:
             tau3=_build(Tau3Config, tau3),
             mcpmark=_build(MCPMarkConfig, mcpmark),
             apiflow=_build(APIFlowConfig, apiflow),
+            toolhop=_build(ToolHopConfig, toolhop),
             deepplanning=_build(DeepPlanningConfig, deepplanning),
         )
 

@@ -1,0 +1,42 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 256
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = 2
+retry_all_errors = false
+temperature = 0.0
+
+[runtime]
+max_turns = 10
+max_ptc_blocks = 9
+task_timeout_seconds = 1800.0
+code_timeout_seconds = 10.0
+max_stdout_chars = 8000
+finalization_max_tokens = 256
+max_compactions = 0
+graph_adaptation_mode = "off"
+graph_inspection_enabled = false
+
+[toolhop]
+root = "D:/ToolHopSource"
+dataset_path = "D:/ToolHopSource/data/ToolHop.json"
+official_worker_command = [
+  "D:/ToolHopSource/.venv/Scripts/python.exe",
+  "D:/GraphPTC/src/graphptc/toolhop_official_worker.py",
+]
+official_commit = "b439d7279af359fda46e8117ae4f0245b75f5c6b"
+data_sha256 = "0a51f71a44b7025645e452123af3caf2e348301922af91778e268db0188a7fab"
+task_manifest_path = "data/toolhop/mandatory-995.json"
+results_path = "runs/toolhop/mandatory-temperature0-epoch1/fewshot-ptc/results.jsonl"
+report_path = "runs/toolhop/mandatory-temperature0-epoch1/fewshot-ptc/report.json"
+artifact_dir = "runs/toolhop/mandatory-temperature0-epoch1/fewshot-ptc/artifacts"
+graph_dir = "runs/toolhop/mandatory-temperature0-epoch1/fewshot-ptc/graphs"
+progress_path = "runs/toolhop/mandatory-temperature0-epoch1/fewshot-ptc/progress.jsonl"
+scenario = "Mandatory"
+expected_tasks = 995
+epochs = 1
+workers = 4
+prompt_variant = "toolhop-ptc-fewshot"

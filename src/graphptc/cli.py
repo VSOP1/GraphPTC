@@ -54,6 +54,12 @@ from .apiflow_benchmark import (
     inspect_apiflow,
     run_apiflow_benchmark,
 )
+from .toolhop_benchmark import (
+    compare_toolhop_benchmarks,
+    evaluate_toolhop_benchmark,
+    inspect_toolhop,
+    run_toolhop_benchmark,
+)
 from .deepplanning_benchmark import (
     compare_deepplanning_benchmarks,
     compare_deepplanning_configs,
@@ -73,6 +79,7 @@ AGENT_DIFF_CONFIG = "configs/agent_diff/graphptc-smoke.toml"
 TAU3_CONFIG = "configs/tau3/graphptc-smoke.toml"
 MCPMARK_CONFIG = "configs/mcpmark/graphptc-smoke5.toml"
 APIFLOW_CONFIG = "configs/apiflow/graphptc-smoke.toml"
+TOOLHOP_CONFIG = "configs/toolhop/graphptc-smoke.toml"
 DEEPPLANNING_CONFIG = "configs/deepplanning/graphptc.toml"
 
 
@@ -329,6 +336,41 @@ def _run_command(
         baseline = ExperimentConfig.from_toml(args.baseline_config)
         report = compare_apiflow_benchmarks(config, baseline, args.output)
         print(json.dumps(report["overall"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-toolhop":
+        manifest = inspect_toolhop(config)
+        print(
+            json.dumps(
+                {
+                    "scenario": manifest["scenario"],
+                    "official_commit": manifest["official_commit"],
+                    "data_sha256": manifest["data_sha256"],
+                    "expected_tasks": manifest["expected_tasks"],
+                    "environment": manifest["environment"],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "run-toolhop":
+        summary = run_toolhop_benchmark(
+            config, task_ids=args.task_id, limit=args.limit
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 else 1
+
+    if args.command == "evaluate-toolhop":
+        report = evaluate_toolhop_benchmark(config)
+        print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-toolhop":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_toolhop_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["official"], ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "inspect-deepplanning":
@@ -633,6 +675,38 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=Path("runs/apiflow/paired-report.json"),
+    )
+
+    toolhop_inspect = subparsers.add_parser(
+        "inspect-toolhop", help="Audit the frozen official ToolHop task bank."
+    )
+    _add_config_argument(toolhop_inspect, default=TOOLHOP_CONFIG)
+
+    toolhop_run = subparsers.add_parser(
+        "run-toolhop", help="Run GraphPTC or Fewshot PTC on ToolHop Mandatory."
+    )
+    _add_config_argument(toolhop_run, default=TOOLHOP_CONFIG)
+    toolhop_run.add_argument("--limit", type=int)
+    toolhop_run.add_argument("--task-id", action="append", default=[])
+
+    toolhop_evaluate = subparsers.add_parser(
+        "evaluate-toolhop", help="Validate and summarize ToolHop results."
+    )
+    _add_config_argument(toolhop_evaluate, default=TOOLHOP_CONFIG)
+
+    toolhop_compare = subparsers.add_parser(
+        "compare-toolhop", help="Compare paired GraphPTC and Fewshot PTC ToolHop reports."
+    )
+    _add_config_argument(toolhop_compare, default="configs/toolhop/graphptc.toml")
+    toolhop_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/toolhop/fewshot-ptc.toml"),
+    )
+    toolhop_compare.add_argument(
+        "--output",
+        type=Path,
+        default=Path("runs/toolhop/mandatory-temperature0-epoch1/paired-report.json"),
     )
 
     deepplanning_inspect = subparsers.add_parser(

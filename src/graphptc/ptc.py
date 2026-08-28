@@ -207,6 +207,7 @@ class OriginalPTCAgent:
         *,
         system_prompt: str = SYSTEM_PROMPT,
         user_prompt_template: str = USER_PROMPT_TEMPLATE,
+        finalize_prompt: str = FINALIZE_PROMPT,
         runtime_functions: Iterable[Callable[..., Any]] | None = None,
         checkpoint_callback: Callable[[dict[str, Any]], None] | None = None,
         ptc_tool_spec: dict[str, Any] = PTC_TOOL_SPEC,
@@ -226,6 +227,7 @@ class OriginalPTCAgent:
         self._runtime = runtime
         self._system_prompt = system_prompt
         self._user_prompt_template = user_prompt_template
+        self._finalize_prompt = finalize_prompt
         functions = tuple(
             (
                 search_tools.search_web,
@@ -292,7 +294,7 @@ class OriginalPTCAgent:
                     and turn_number < self._runtime.max_turns
                 )
                 if not tools_available and not finalization_requested:
-                    messages.append({"role": "user", "content": FINALIZE_PROMPT})
+                    messages.append({"role": "user", "content": self._finalize_prompt})
                     finalization_requested = True
                 context_chars = len(
                     json.dumps(messages, ensure_ascii=False, separators=(",", ":"))
