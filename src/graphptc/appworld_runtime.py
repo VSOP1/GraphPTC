@@ -4,7 +4,7 @@ import json
 import queue
 import subprocess
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from codecell import BaseRuntime, CodeResult
@@ -22,6 +22,9 @@ class AppWorldProgramRuntime(BaseRuntime):
         task_id: str,
         experiment_name: str,
         timeout_seconds: float = 100,
+        initialization: Mapping[str, Any] | None = None,
+        runtime_name: str = "appworld",
+        runtime_label: str = "AppWorld",
     ) -> None:
         super().__init__(PythonValidator())
         self._worker_command = tuple(worker_command)
@@ -29,6 +32,9 @@ class AppWorldProgramRuntime(BaseRuntime):
         self._task_id = task_id
         self._experiment_name = experiment_name
         self._timeout_seconds = timeout_seconds
+        self._initialization = dict(initialization or {})
+        self._runtime_name = runtime_name
+        self._runtime_label = runtime_label
         self._process: subprocess.Popen[str] | None = None
         self._lines: queue.Queue[str | None] | None = None
         self._stderr: list[str] = []
@@ -53,14 +59,14 @@ class AppWorldProgramRuntime(BaseRuntime):
         del namespace
         with self._lock:
             if self._closed:
-                raise RuntimeError("AppWorld runtime is closed")
+                raise RuntimeError(f"{self._runtime_label} runtime is closed")
             if self._broken_error is not None:
                 self._broken_trace(
                     self._broken_error,
                     failure_type="broken_runtime",
                 )
                 raise RuntimeError(
-                    f"AppWorld runtime is unusable after worker failure: {self._broken_error}"
+                    f"{self._runtime_label} runtime is unusable after worker failure: {self._broken_error}"
                 )
             self.last_execution_trace = {}
             self._ensure_process()
@@ -79,7 +85,7 @@ class AppWorldProgramRuntime(BaseRuntime):
                 self._mark_broken(message_text, failure_type="worker_failure")
                 return CodeResult(stderr=message_text, return_code=1)
             if message.get("type") != "execution":
-                error = f"AppWorld worker protocol error: {message}"
+                error = f"{self._runtime_label} worker protocol error: {message}"
                 self._mark_broken(error, failure_type="protocol_error")
                 return CodeResult(
                     stderr=error,
@@ -88,13 +94,7 @@ class AppWorldProgramRuntime(BaseRuntime):
             output = str(message.get("stdout", ""))
             success = bool(message.get("success", False))
             self._completed = bool(message.get("completed", False))
-            api_calls = _redact_secrets(message.get("api_calls", []))
-            self.last_execution_trace = {
-                "api_calls": api_calls if isinstance(api_calls, list) else [],
-                "external_actions": _external_actions(api_calls, success=success),
-                "completed": self._completed,
-                "output_directory": self._metadata.get("output_directory"),
-            }
+            self.last_execution_trace = self._execution_trace(message, success=success)
             if success:
                 return CodeResult(stdout=output, return_code=0)
             return CodeResult(stderr=output, return_code=1)
@@ -111,7 +111,7 @@ class AppWorldProgramRuntime(BaseRuntime):
     def metadata(self) -> dict[str, Any]:
         with self._lock:
             if self._closed:
-                raise RuntimeError("AppWorld runtime is closed")
+                raise RuntimeError(f"{self._runtime_label} runtime is closed")
             if not self._metadata:
                 self._ensure_process()
             return dict(self._metadata)
@@ -119,15 +119,17 @@ class AppWorldProgramRuntime(BaseRuntime):
     def evaluate(self) -> dict[str, Any]:
         with self._lock:
             if self._closed:
-                raise RuntimeError("AppWorld runtime is closed")
+                raise RuntimeError(f"{self._runtime_label} runtime is closed")
             self._ensure_process()
             self._send({"type": "evaluate"})
             message = self._receive(self._timeout_seconds)
             if message.get("type") != "evaluation":
-                raise RuntimeError(f"AppWorld worker protocol error: {message}")
+                raise RuntimeError(f"{self._runtime_label} worker protocol error: {message}")
             evaluation = message.get("evaluation", {})
             if not isinstance(evaluation, dict):
-                raise RuntimeError("AppWorld worker returned an invalid evaluation")
+                raise RuntimeError(
+                    f"{self._runtime_label} worker returned an invalid evaluation"
+                )
             return evaluation
 
     def close(self) -> None:
@@ -142,7 +144,9 @@ class AppWorldProgramRuntime(BaseRuntime):
                     self._send({"type": "close"})
                     message = self._receive(5)
                     if message.get("type") != "closed":
-                        raise RuntimeError(f"AppWorld worker close protocol error: {message}")
+                        raise RuntimeError(
+                            f"{self._runtime_label} worker close protocol error: {message}"
+                        )
                     process.wait(timeout=5)
                 self._termination_confirmed = process.poll() is not None
             except Exception as exc:
@@ -155,7 +159,7 @@ class AppWorldProgramRuntime(BaseRuntime):
 
     def telemetry(self) -> dict[str, Any]:
         return {
-            "runtime": "appworld",
+            "runtime": self._runtime_name,
             "task_id": self._task_id,
             "persistent": True,
             "executions": self._executions,
@@ -172,7 +176,7 @@ class AppWorldProgramRuntime(BaseRuntime):
     def _ensure_process(self) -> None:
         if self._broken_error is not None:
             raise RuntimeError(
-                f"AppWorld runtime is unusable after worker failure: {self._broken_error}"
+                f"{self._runtime_label} runtime is unusable after worker failure: {self._broken_error}"
             )
         if self._process is not None and self._process.poll() is None:
             return
@@ -209,35 +213,53 @@ class AppWorldProgramRuntime(BaseRuntime):
                 "task_id": self._task_id,
                 "experiment_name": self._experiment_name,
                 "timeout_seconds": self._timeout_seconds,
+                **self._initialization,
             }
         )
         message = self._receive(60)
         if message.get("type") != "ready":
             self._terminate()
-            raise RuntimeError(f"AppWorld worker failed to initialize: {message}")
+            raise RuntimeError(
+                f"{self._runtime_label} worker failed to initialize: {message}"
+            )
         self._metadata = {key: value for key, value in message.items() if key != "type"}
 
     def _send(self, message: dict[str, Any]) -> None:
         process = self._process
         if process is None or process.stdin is None:
-            raise RuntimeError("AppWorld worker is unavailable")
+            raise RuntimeError(f"{self._runtime_label} worker is unavailable")
         process.stdin.write(json.dumps(message, ensure_ascii=True) + "\n")
         process.stdin.flush()
 
     def _receive(self, timeout: float) -> dict[str, Any]:
         if self._lines is None:
-            raise RuntimeError("AppWorld worker is unavailable")
+            raise RuntimeError(f"{self._runtime_label} worker is unavailable")
         try:
             line = self._lines.get(timeout=timeout)
         except queue.Empty as exc:
-            raise TimeoutError("AppWorld worker timed out") from exc
+            raise TimeoutError(f"{self._runtime_label} worker timed out") from exc
         if line is None:
             stderr = "".join(self._stderr[-20:]).strip()
-            raise RuntimeError(f"AppWorld worker exited unexpectedly: {stderr}")
+            raise RuntimeError(
+                f"{self._runtime_label} worker exited unexpectedly: {stderr}"
+            )
         message = json.loads(line)
         if not isinstance(message, dict):
-            raise RuntimeError("AppWorld worker returned a non-object message")
+            raise RuntimeError(
+                f"{self._runtime_label} worker returned a non-object message"
+            )
         return message
+
+    def _execution_trace(
+        self, message: Mapping[str, Any], *, success: bool
+    ) -> dict[str, Any]:
+        api_calls = _redact_secrets(message.get("api_calls", []))
+        return {
+            "api_calls": api_calls if isinstance(api_calls, list) else [],
+            "external_actions": _external_actions(api_calls, success=success),
+            "completed": self._completed,
+            "output_directory": self._metadata.get("output_directory"),
+        }
 
     def _terminate(self) -> bool:
         process = self._process

@@ -1,0 +1,73 @@
+{
+  "frozen_on": "2026-08-28",
+  "platform": {
+    "distribution": "Ubuntu 22.04.5 LTS",
+    "python": "3.10.12",
+    "alfworld": "0.4.2",
+    "textworld": "1.7.0",
+    "pyyaml": "6.0.3",
+    "numpy": "2.2.6"
+  },
+  "official_config_sha256": "75d81ed1f373735d729a60f06eb3f3ca7d90c2037a02e22947729ac58a61912e",
+  "splits": {
+    "valid_seen": {
+      "task_count": 140,
+      "dataset_sha256": "9b4498ee933cdf130de9b7f5c42445e2371ad8d01790b2fb3bfd8283e3265dd1"
+    },
+    "valid_unseen": {
+      "task_count": 134,
+      "dataset_sha256": "01e972eaf594f6f51edcce0d5ee8cde0634e4b1377da60ad641ced8716edd619"
+    }
+  },
+  "smoke": {
+    "split": "valid_seen",
+    "workers": 3,
+    "placement_command": "move OBJECT to RECEPTACLE",
+    "selection_rule": "first three task IDs returned by the frozen official split",
+    "task_ids": [
+      "pick_and_place_simple-SprayBottle-None-Cabinet-413/trial_T20190907_114931_692464",
+      "pick_and_place_simple-Candle-None-Toilet-429/trial_T20190908_052232_887934",
+      "pick_heat_then_place_in_recep-Potato-None-Fridge-11/trial_T20190909_011341_436523"
+    ]
+  },
+  "excluded_diagnostic_runs": [
+    {
+      "path": "runs/alfworld/smoke/graphptc/results.jsonl",
+      "run_signature": "6eab97a3f8ce2753d5d65b505b632beb4f1ad05f0e989b744423b73a81af2687",
+      "reason": "adapter prompt used THOR put syntax instead of AlfredTWEnv move syntax"
+    },
+    {
+      "path": "runs/alfworld/smoke/fewshot-ptc/results.jsonl",
+      "run_signature": "8c1e1b9a055dad603149005a9161a7b5f4d9b39cf4f5f10aeb45bbf060c6c611",
+      "reason": "adapter prompt used THOR put syntax instead of AlfredTWEnv move syntax"
+    }
+  ],
+  "accepted_smoke_runs": [
+    {
+      "arm": "graphptc",
+      "path": "runs/alfworld/smoke-move-grammar/graphptc/results.jsonl",
+      "run_signature": "5f2ecb7602c4afdee8e7e99e5a5de00d0f286c86cfea8f730c710ceacc2b74e4",
+      "processed": 3,
+      "successes": 2,
+      "runner_failures": 0,
+      "evaluator_failures": 0,
+      "execution_failure_tasks": 0
+    },
+    {
+      "arm": "fewshot-ptc",
+      "path": "runs/alfworld/smoke-move-grammar/fewshot-ptc/results.jsonl",
+      "run_signature": "2388dfec7d4e8a60efb89e91588f8eb105bac8ff1e48fa394ccc86a8a162f339",
+      "processed": 3,
+      "successes": 2,
+      "runner_failures": 0,
+      "evaluator_failures": 0,
+      "execution_failure_tasks": 0
+    }
+  ],
+  "download_assets": {
+    "json_2.1.1_json.zip": "25171f16e20ad7b048c47275c45b0babf3aa1cbab29cec97387922350a9844bc",
+    "json_2.1.1_pddl.zip": "913942ebed06659ea0da2f8122512d98bc6add30d84961ca803132d8fbcad585",
+    "json_2.1.2_tw-pddl.zip": "eea90499df27b9cb3147d1d1927264146d38194b575e25f70a82875545742dcb",
+    "mrcnn_alfred_objects_sep13_004.pth": "a12d1789a76164a2735e372ff86b2f618813fd5ad673f420a30652652583f6b4"
+  }
+}

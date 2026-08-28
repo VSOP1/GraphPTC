@@ -25,6 +25,11 @@ from .appworld_benchmark import (
     inspect_appworld,
     run_appworld_benchmark,
 )
+from .alfworld_benchmark import (
+    evaluate_alfworld_benchmark,
+    inspect_alfworld,
+    run_alfworld_benchmark,
+)
 from .deepsearchqa import DeepSearchQAError, download_deepsearchqa
 from .toolsandbox_benchmark import (
     evaluate_toolsandbox_benchmark,
@@ -74,6 +79,7 @@ DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
 BROWSECOMP_CONFIG = "configs/browsecomp.example.toml"
 BROWSECOMP_PLUS_CONFIG = "configs/browsecomp_plus/browsecomp_plus.example.toml"
 APPWORLD_CONFIG = "configs/appworld/appworld.graphptc-dev-smoke.toml"
+ALFWORLD_CONFIG = "configs/alfworld/graphptc-smoke.toml"
 TOOL_SANDBOX_CONFIG = "configs/toolsandbox/graphptc-smoke.toml"
 AGENT_DIFF_CONFIG = "configs/agent_diff/graphptc-smoke.toml"
 TAU3_CONFIG = "configs/tau3/graphptc-smoke.toml"
@@ -189,6 +195,26 @@ def _run_command(
 
     if args.command == "evaluate-appworld":
         print(json.dumps(evaluate_appworld_benchmark(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-alfworld":
+        inspection = inspect_alfworld(config)
+        inspection.pop("task_ids", None)
+        print(json.dumps(inspection, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-alfworld":
+        summary = run_alfworld_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            restart=args.restart,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.evaluator_failures == 0 and summary.runner_failures == 0 else 1
+
+    if args.command == "evaluate-alfworld":
+        print(json.dumps(evaluate_alfworld_benchmark(config), ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "inspect-toolsandbox":
@@ -541,6 +567,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "evaluate-appworld", help="Run the official AppWorld evaluator over saved task worlds."
     )
     _add_config_argument(appworld_evaluate, default=APPWORLD_CONFIG)
+
+    alfworld_inspect = subparsers.add_parser(
+        "inspect-alfworld",
+        help="Audit the isolated official ALFWorld text environment and split.",
+    )
+    _add_config_argument(alfworld_inspect, default=ALFWORLD_CONFIG)
+
+    alfworld_run = subparsers.add_parser(
+        "run-alfworld",
+        help="Run matched GraphPTC or Fewshot PTC on official ALFWorld text episodes.",
+    )
+    _add_config_argument(alfworld_run, default=ALFWORLD_CONFIG)
+    alfworld_run.add_argument("--limit", type=int)
+    alfworld_run.add_argument("--task-id", action="append", default=[])
+    alfworld_run.add_argument("--restart", action="store_true")
+
+    alfworld_evaluate = subparsers.add_parser(
+        "evaluate-alfworld", help="Validate and aggregate saved official ALFWorld metrics."
+    )
+    _add_config_argument(alfworld_evaluate, default=ALFWORLD_CONFIG)
 
     toolsandbox_inspect = subparsers.add_parser(
         "inspect-toolsandbox", help="Inspect the isolated official ToolSandbox installation."

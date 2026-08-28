@@ -67,6 +67,23 @@ class AppWorldConfig:
 
 
 @dataclass(frozen=True)
+class AlfWorldConfig:
+    data_root: str = "/home/agent/.cache/alfworld"
+    official_config_path: str = ""
+    split: str = "eval_in_distribution"
+    worker_command: tuple[str, ...] = ()
+    results_path: Path = Path("runs/alfworld/graphptc/results.jsonl")
+    report_path: Path = Path("runs/alfworld/graphptc/report.json")
+    graph_dir: Path = Path("runs/alfworld/graphptc/graphs")
+    workers: int = 3
+    expected_tasks: int = 140
+    seed: int = 42
+    max_steps: int = 50
+    prompt_variant: str = "alfworld-ptc-fewshot"
+    official_version: str = "0.4.2"
+
+
+@dataclass(frozen=True)
 class ToolSandboxConfig:
     root: str = "/home/agent/graphptc-toolsandbox"
     worker_command: tuple[str, ...] = ()
@@ -260,6 +277,7 @@ class ExperimentConfig:
     grader: GraderConfig
     browsecomp_plus: BrowseCompPlusConfig
     appworld: AppWorldConfig
+    alfworld: AlfWorldConfig
     toolsandbox: ToolSandboxConfig
     agent_diff: AgentDiffConfig
     tau3: Tau3Config
@@ -305,6 +323,15 @@ class ExperimentConfig:
                 appworld[key] = candidate if candidate.is_absolute() else base / candidate
         if "worker_command" in appworld:
             appworld["worker_command"] = tuple(appworld["worker_command"])
+
+        alfworld = dict(raw.get("alfworld", {}))
+        for key in ("results_path", "report_path", "graph_dir"):
+            value = alfworld.get(key)
+            if value is not None:
+                candidate = Path(value)
+                alfworld[key] = candidate if candidate.is_absolute() else base / candidate
+        if "worker_command" in alfworld:
+            alfworld["worker_command"] = tuple(alfworld["worker_command"])
 
         toolsandbox = dict(raw.get("toolsandbox", {}))
         for key in ("results_path", "report_path", "artifact_dir", "graph_dir"):
@@ -420,6 +447,7 @@ class ExperimentConfig:
             grader=_build(GraderConfig, raw.get("grader", {})),
             browsecomp_plus=_build(BrowseCompPlusConfig, browsecomp_plus),
             appworld=_build(AppWorldConfig, appworld),
+            alfworld=_build(AlfWorldConfig, alfworld),
             toolsandbox=_build(ToolSandboxConfig, toolsandbox),
             agent_diff=_build(AgentDiffConfig, agent_diff),
             tau3=_build(Tau3Config, tau3),

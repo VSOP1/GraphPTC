@@ -143,6 +143,13 @@ Qwen tokenizer 512-token snippet、top-5 和独立本地 retriever 服务。
 .\.venv\Scripts\graphptc.exe evaluate-browsecomp-plus
 ```
 
+## ALFWorld adapter
+
+GraphPTC 与 matched Fewshot PTC baseline 已通过独立 worker 接入官方 ALFWorld 0.4.2
+文本环境，并为 `valid_seen` / `valid_unseen` 提供成对配置。本地全量开发评测已经完成；
+这些结果不是官方排行榜结果。环境隔离、对齐项、命令、结果和验证边界见
+[`docs/alfworld-evaluation.md`](docs/alfworld-evaluation.md)。
+
 Original PTC 的冻结 20 题 pilot 由 SHA-256 对 query ID 排序选取，排除早期诊断题；
 选择依据、源数据哈希和题号保存在 `data/browsecomp_plus/pilot20.manifest.json`。对应
 配置为 `configs/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml`。该配置显式要求
