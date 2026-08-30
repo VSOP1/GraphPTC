@@ -18,4 +18,10 @@ data/browsecomp_plus/*.sqlite3
 data/browsecomp_plus/*.sqlite3.tmp
 data/browsecomp_plus/qrel_*.txt
 data/agent_diff/*.jsonl
+data/fanoutqa/*.zim
+data/fanoutqa/*.aria2
+data/fanoutqa/*.log
+data/fanoutqa/*.pid
+data/fanoutqa/*.tar.gz
+data/fanoutqa/kiwix-tools-*/
 runs/

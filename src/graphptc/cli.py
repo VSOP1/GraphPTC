@@ -65,6 +65,13 @@ from .toolhop_benchmark import (
     inspect_toolhop,
     run_toolhop_benchmark,
 )
+from .fanoutqa_benchmark import (
+    compare_fanoutqa_benchmarks,
+    evaluate_fanoutqa_benchmark,
+    inspect_fanoutqa,
+    probe_fanoutqa_wikipedia,
+    run_fanoutqa_benchmark,
+)
 from .deepplanning_benchmark import (
     compare_deepplanning_benchmarks,
     compare_deepplanning_configs,
@@ -86,6 +93,7 @@ TAU3_CONFIG = "configs/tau3/graphptc-smoke.toml"
 MCPMARK_CONFIG = "configs/mcpmark/graphptc-smoke5.toml"
 APIFLOW_CONFIG = "configs/apiflow/graphptc-smoke.toml"
 TOOLHOP_CONFIG = "configs/toolhop/graphptc-smoke.toml"
+FANOUTQA_CONFIG = "configs/fanoutqa/graphptc-dev.toml"
 DEEPPLANNING_CONFIG = "configs/deepplanning/graphptc.toml"
 
 
@@ -397,6 +405,35 @@ def _run_command(
         baseline = ExperimentConfig.from_toml(args.baseline_config)
         report = compare_toolhop_benchmarks(config, baseline, args.output)
         print(json.dumps(report["official"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-fanoutqa":
+        print(json.dumps(inspect_fanoutqa(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "probe-fanoutqa-wikipedia":
+        print(json.dumps(probe_fanoutqa_wikipedia(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-fanoutqa":
+        summary = run_fanoutqa_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            restart=args.restart,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.failed == 0 else 1
+
+    if args.command == "evaluate-fanoutqa":
+        report = evaluate_fanoutqa_benchmark(config)
+        print(json.dumps(report["scoring"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-fanoutqa":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_fanoutqa_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["difference"], ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "inspect-deepplanning":
@@ -753,6 +790,43 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=Path("runs/toolhop/mandatory-temperature0-epoch1/paired-report.json"),
+    )
+
+    fanoutqa_inspect = subparsers.add_parser(
+        "inspect-fanoutqa", help="Inspect the official FanOutQA split and adapter configuration."
+    )
+    _add_config_argument(fanoutqa_inspect, default=FANOUTQA_CONFIG)
+
+    fanoutqa_probe = subparsers.add_parser(
+        "probe-fanoutqa-wikipedia",
+        help="Verify wiki_search and wiki_content against the local official snapshot.",
+    )
+    _add_config_argument(fanoutqa_probe, default=FANOUTQA_CONFIG)
+
+    fanoutqa_run = subparsers.add_parser(
+        "run-fanoutqa", help="Run GraphPTC or Fewshot PTC on FanOutQA open-book."
+    )
+    _add_config_argument(fanoutqa_run, default=FANOUTQA_CONFIG)
+    fanoutqa_run.add_argument("--limit", type=int)
+    fanoutqa_run.add_argument("--task-id", action="append", default=[])
+    fanoutqa_run.add_argument("--restart", action="store_true")
+
+    fanoutqa_evaluate = subparsers.add_parser(
+        "evaluate-fanoutqa", help="Score FanOutQA dev outputs with official metrics and MiMo judge."
+    )
+    _add_config_argument(fanoutqa_evaluate, default=FANOUTQA_CONFIG)
+
+    fanoutqa_compare = subparsers.add_parser(
+        "compare-fanoutqa", help="Create the matched FanOutQA paired result report."
+    )
+    _add_config_argument(fanoutqa_compare, default=FANOUTQA_CONFIG)
+    fanoutqa_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/fanoutqa/fewshot-ptc-dev.toml"),
+    )
+    fanoutqa_compare.add_argument(
+        "--output", type=Path, default=Path("runs/fanoutqa/dev/paired-report.json")
     )
 
     deepplanning_inspect = subparsers.add_parser(

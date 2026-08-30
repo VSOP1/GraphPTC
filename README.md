@@ -150,6 +150,11 @@ GraphPTC 与 matched Fewshot PTC baseline 已通过独立 worker 接入官方 AL
 这些结果不是官方排行榜结果。环境隔离、对齐项、命令、结果和验证边界见
 [`docs/alfworld-evaluation.md`](docs/alfworld-evaluation.md)。
 
+FanOutQA open-book 已按官方 `wiki_search` / `wiki_content` 接口接入持久 PTC Python 环境；
+GraphPTC 与 matched Fewshot PTC 使用成对的 dev 310 配置、2023-09 本地 Kiwix Wikipedia
+和官方输出/评分格式。配置与运行说明见
+[`docs/fanoutqa-evaluation.md`](docs/fanoutqa-evaluation.md)。
+
 Original PTC 的冻结 20 题 pilot 由 SHA-256 对 query ID 排序选取，排除早期诊断题；
 选择依据、源数据哈希和题号保存在 `data/browsecomp_plus/pilot20.manifest.json`。对应
 配置为 `configs/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml`。该配置显式要求

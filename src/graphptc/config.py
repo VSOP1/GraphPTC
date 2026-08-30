@@ -214,6 +214,26 @@ class ToolHopConfig:
 
 
 @dataclass(frozen=True)
+class FanOutQAConfig:
+    split: str = "dev"
+    setting: str = "openbook"
+    wikipedia_type: str = "kiwix"
+    kiwix_base: str = "http://localhost:8888"
+    kiwix_zimname: str = "wikipedia_en_all_nopic_2023-09"
+    search_results: int = 10
+    expected_tasks: int = 310
+    workers: int = 4
+    wiki_cache_dir: Path = Path("runs/fanoutqa/graphptc-dev/wiki-cache")
+    results_path: Path = Path("runs/fanoutqa/graphptc-dev/results.jsonl")
+    submission_path: Path = Path("runs/fanoutqa/graphptc-dev/submission.jsonl")
+    grades_path: Path = Path("runs/fanoutqa/graphptc-dev/grades.jsonl")
+    report_path: Path = Path("runs/fanoutqa/graphptc-dev/report.json")
+    artifact_dir: Path = Path("runs/fanoutqa/graphptc-dev/artifacts")
+    graph_dir: Path = Path("runs/fanoutqa/graphptc-dev/graphs")
+    prompt_variant: str = "fanoutqa-ptc-fewshot"
+
+
+@dataclass(frozen=True)
 class DeepPlanningConfig:
     root: str = "D:/GraphPTC-DeepPlanning"
     python_command: str = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
@@ -284,6 +304,7 @@ class ExperimentConfig:
     mcpmark: MCPMarkConfig
     apiflow: APIFlowConfig
     toolhop: ToolHopConfig
+    fanoutqa: FanOutQAConfig
     deepplanning: DeepPlanningConfig
 
     @classmethod
@@ -428,6 +449,21 @@ class ExperimentConfig:
         if "official_worker_command" in toolhop:
             toolhop["official_worker_command"] = tuple(toolhop["official_worker_command"])
 
+        fanoutqa = dict(raw.get("fanoutqa", {}))
+        for key in (
+            "wiki_cache_dir",
+            "results_path",
+            "submission_path",
+            "grades_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+        ):
+            value = fanoutqa.get(key)
+            if value is not None:
+                candidate = Path(value)
+                fanoutqa[key] = candidate if candidate.is_absolute() else base / candidate
+
         deepplanning = dict(raw.get("deepplanning", {}))
         for key in ("results_dir", "progress_path"):
             value = deepplanning.get(key)
@@ -454,6 +490,7 @@ class ExperimentConfig:
             mcpmark=_build(MCPMarkConfig, mcpmark),
             apiflow=_build(APIFlowConfig, apiflow),
             toolhop=_build(ToolHopConfig, toolhop),
+            fanoutqa=_build(FanOutQAConfig, fanoutqa),
             deepplanning=_build(DeepPlanningConfig, deepplanning),
         )
 
