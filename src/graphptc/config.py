@@ -234,6 +234,24 @@ class FanOutQAConfig:
 
 
 @dataclass(frozen=True)
+class FramesConfig:
+    dataset_path: Path = Path("data/frames/test.tsv")
+    dataset_revision: str = "58d9fb6330f3ab1316d1eca12e5e8ef23dcc22ef"
+    corpus_snapshot: str = "wikipedia/20230601.en"
+    retriever_base_url: str = "http://localhost:8890"
+    search_results: int = 10
+    max_search_calls: int = 25
+    expected_tasks: int = 824
+    workers: int = 4
+    results_path: Path = Path("runs/frames/test/graphptc/results.jsonl")
+    grades_path: Path = Path("runs/frames/test/graphptc/grades.jsonl")
+    report_path: Path = Path("runs/frames/test/graphptc/report.json")
+    artifact_dir: Path = Path("runs/frames/test/graphptc/artifacts")
+    graph_dir: Path = Path("runs/frames/test/graphptc/graphs")
+    prompt_variant: str = "frames-ptc-official-planning-fewshot"
+
+
+@dataclass(frozen=True)
 class DeepPlanningConfig:
     root: str = "D:/GraphPTC-DeepPlanning"
     python_command: str = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
@@ -321,6 +339,7 @@ class ExperimentConfig:
     apiflow: APIFlowConfig
     toolhop: ToolHopConfig
     fanoutqa: FanOutQAConfig
+    frames: FramesConfig
     deepplanning: DeepPlanningConfig
     intercode: InterCodeConfig
 
@@ -481,6 +500,20 @@ class ExperimentConfig:
                 candidate = Path(value)
                 fanoutqa[key] = candidate if candidate.is_absolute() else base / candidate
 
+        frames = dict(raw.get("frames", {}))
+        for key in (
+            "dataset_path",
+            "results_path",
+            "grades_path",
+            "report_path",
+            "artifact_dir",
+            "graph_dir",
+        ):
+            value = frames.get(key)
+            if value is not None:
+                candidate = Path(value)
+                frames[key] = candidate if candidate.is_absolute() else base / candidate
+
         deepplanning = dict(raw.get("deepplanning", {}))
         for key in ("results_dir", "progress_path"):
             value = deepplanning.get(key)
@@ -517,6 +550,7 @@ class ExperimentConfig:
             apiflow=_build(APIFlowConfig, apiflow),
             toolhop=_build(ToolHopConfig, toolhop),
             fanoutqa=_build(FanOutQAConfig, fanoutqa),
+            frames=_build(FramesConfig, frames),
             deepplanning=_build(DeepPlanningConfig, deepplanning),
             intercode=_build(InterCodeConfig, intercode),
         )

@@ -24,4 +24,6 @@ data/fanoutqa/*.log
 data/fanoutqa/*.pid
 data/fanoutqa/*.tar.gz
 data/fanoutqa/kiwix-tools-*/
+data/frames/*
+!data/frames/test.tsv
 runs/

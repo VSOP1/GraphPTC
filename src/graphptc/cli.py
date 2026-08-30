@@ -72,6 +72,13 @@ from .fanoutqa_benchmark import (
     probe_fanoutqa_wikipedia,
     run_fanoutqa_benchmark,
 )
+from .frames_benchmark import (
+    compare_frames_benchmarks,
+    evaluate_frames_benchmark,
+    inspect_frames,
+    probe_frames_wikipedia,
+    run_frames_benchmark,
+)
 from .deepplanning_benchmark import (
     compare_deepplanning_benchmarks,
     compare_deepplanning_configs,
@@ -100,6 +107,7 @@ MCPMARK_CONFIG = "configs/mcpmark/graphptc-smoke5.toml"
 APIFLOW_CONFIG = "configs/apiflow/graphptc-smoke.toml"
 TOOLHOP_CONFIG = "configs/toolhop/graphptc-smoke.toml"
 FANOUTQA_CONFIG = "configs/fanoutqa/graphptc-dev.toml"
+FRAMES_CONFIG = "configs/frames/graphptc-test.toml"
 DEEPPLANNING_CONFIG = "configs/deepplanning/graphptc.toml"
 INTERCODE_CONFIG = "configs/intercode/graphptc.toml"
 
@@ -440,6 +448,35 @@ def _run_command(
     if args.command == "compare-fanoutqa":
         baseline = ExperimentConfig.from_toml(args.baseline_config)
         report = compare_fanoutqa_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["difference"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-frames":
+        print(json.dumps(inspect_frames(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "probe-frames-wikipedia":
+        print(json.dumps(probe_frames_wikipedia(config), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-frames":
+        summary = run_frames_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            restart=args.restart,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.failed == 0 else 1
+
+    if args.command == "evaluate-frames":
+        report = evaluate_frames_benchmark(config)
+        print(json.dumps(report["scoring"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-frames":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_frames_benchmarks(config, baseline, args.output)
         print(json.dumps(report["difference"], ensure_ascii=False, indent=2))
         return 0
 
@@ -861,6 +898,43 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     fanoutqa_compare.add_argument(
         "--output", type=Path, default=Path("runs/fanoutqa/dev/paired-report.json")
+    )
+
+    frames_inspect = subparsers.add_parser(
+        "inspect-frames", help="Inspect the official FRAMES test set and retriever configuration."
+    )
+    _add_config_argument(frames_inspect, default=FRAMES_CONFIG)
+
+    frames_probe = subparsers.add_parser(
+        "probe-frames-wikipedia",
+        help="Verify FRAMES BM25 search and article fetch against the official snapshot.",
+    )
+    _add_config_argument(frames_probe, default=FRAMES_CONFIG)
+
+    frames_run = subparsers.add_parser(
+        "run-frames", help="Run GraphPTC or the matched PTC baseline on FRAMES test."
+    )
+    _add_config_argument(frames_run, default=FRAMES_CONFIG)
+    frames_run.add_argument("--limit", type=int)
+    frames_run.add_argument("--task-id", action="append", default=[])
+    frames_run.add_argument("--restart", action="store_true")
+
+    frames_evaluate = subparsers.add_parser(
+        "evaluate-frames", help="Score complete FRAMES outputs with the official MiMo judge prompt."
+    )
+    _add_config_argument(frames_evaluate, default=FRAMES_CONFIG)
+
+    frames_compare = subparsers.add_parser(
+        "compare-frames", help="Create the matched FRAMES paired result report."
+    )
+    _add_config_argument(frames_compare, default=FRAMES_CONFIG)
+    frames_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/frames/fewshot-ptc-test.toml"),
+    )
+    frames_compare.add_argument(
+        "--output", type=Path, default=Path("runs/frames/test/paired-report.json")
     )
 
     intercode_inspect = subparsers.add_parser(
