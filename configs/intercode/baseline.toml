@@ -1,0 +1,36 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 4096
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = 8
+temperature = 0.0
+
+[runtime]
+max_turns = 11
+max_ptc_blocks = 10
+task_timeout_seconds = 1800.0
+code_timeout_seconds = 180.0
+max_stdout_chars = 12000
+finalization_max_tokens = 1024
+compaction_max_tokens = 2048
+max_compactions = 0
+max_total_output_tokens = 45056
+graph_adaptation_mode = "off"
+graph_inspection_enabled = false
+
+[intercode]
+root = "/home/agent/graphptc-intercode"
+official_commit = "c3e46d827cfc9d4c704ec078f7abf9f41e3191d8"
+worker_command = ["wsl.exe", "-d", "Ubuntu-22.04", "-e", "/home/agent/graphptc-intercode/.venv/bin/python", "/mnt/d/GraphPTC/src/graphptc/intercode_worker.py"]
+results_path = "runs/intercode/baseline/results.jsonl"
+report_path = "runs/intercode/baseline/report.json"
+artifact_dir = "runs/intercode/baseline/artifacts"
+graph_dir = "runs/intercode/baseline/graphs"
+workers = 4
+max_actions = 10
+expected_bash_tasks = 200
+expected_sql_tasks = 1034
+prompt_variant = "intercode-ptc-zero-shot"

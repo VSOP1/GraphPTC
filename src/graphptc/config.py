@@ -251,6 +251,22 @@ class DeepPlanningConfig:
 
 
 @dataclass(frozen=True)
+class InterCodeConfig:
+    root: str = "/home/agent/graphptc-intercode"
+    official_commit: str = "c3e46d827cfc9d4c704ec078f7abf9f41e3191d8"
+    worker_command: tuple[str, ...] = ()
+    results_path: Path = Path("runs/intercode/graphptc/results.jsonl")
+    report_path: Path = Path("runs/intercode/graphptc/report.json")
+    artifact_dir: Path = Path("runs/intercode/graphptc/artifacts")
+    graph_dir: Path = Path("runs/intercode/graphptc/graphs")
+    workers: int = 4
+    max_actions: int = 10
+    expected_bash_tasks: int = 200
+    expected_sql_tasks: int = 1_034
+    prompt_variant: str = "intercode-ptc-zero-shot"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     max_turns: int = 100
     max_ptc_blocks: int = 100
@@ -306,6 +322,7 @@ class ExperimentConfig:
     toolhop: ToolHopConfig
     fanoutqa: FanOutQAConfig
     deepplanning: DeepPlanningConfig
+    intercode: InterCodeConfig
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "ExperimentConfig":
@@ -475,6 +492,15 @@ class ExperimentConfig:
                 deepplanning["expected_shopping_tasks"]
             )
 
+        intercode = dict(raw.get("intercode", {}))
+        for key in ("results_path", "report_path", "artifact_dir", "graph_dir"):
+            value = intercode.get(key)
+            if value is not None:
+                candidate = Path(value)
+                intercode[key] = candidate if candidate.is_absolute() else base / candidate
+        if "worker_command" in intercode:
+            intercode["worker_command"] = tuple(intercode["worker_command"])
+
         return cls(
             model=_build(ModelConfig, raw.get("model", {})),
             search=_build(SearchConfig, raw.get("search", {})),
@@ -492,6 +518,7 @@ class ExperimentConfig:
             toolhop=_build(ToolHopConfig, toolhop),
             fanoutqa=_build(FanOutQAConfig, fanoutqa),
             deepplanning=_build(DeepPlanningConfig, deepplanning),
+            intercode=_build(InterCodeConfig, intercode),
         )
 
     def require_api_key(self, env_name: str) -> str:

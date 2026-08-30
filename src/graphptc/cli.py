@@ -80,6 +80,12 @@ from .deepplanning_benchmark import (
     probe_deepplanning_api,
     run_deepplanning_benchmark,
 )
+from .intercode_benchmark import (
+    compare_intercode_benchmarks,
+    evaluate_intercode_benchmark,
+    inspect_intercode,
+    run_intercode_benchmark,
+)
 
 
 DEFAULT_CONFIG = "configs/deepsearchqa.example.toml"
@@ -95,6 +101,7 @@ APIFLOW_CONFIG = "configs/apiflow/graphptc-smoke.toml"
 TOOLHOP_CONFIG = "configs/toolhop/graphptc-smoke.toml"
 FANOUTQA_CONFIG = "configs/fanoutqa/graphptc-dev.toml"
 DEEPPLANNING_CONFIG = "configs/deepplanning/graphptc.toml"
+INTERCODE_CONFIG = "configs/intercode/graphptc.toml"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -433,6 +440,33 @@ def _run_command(
     if args.command == "compare-fanoutqa":
         baseline = ExperimentConfig.from_toml(args.baseline_config)
         report = compare_fanoutqa_benchmarks(config, baseline, args.output)
+        print(json.dumps(report["difference"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "inspect-intercode":
+        inspection = inspect_intercode(config)
+        inspection.pop("tasks", None)
+        print(json.dumps(inspection, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-intercode":
+        summary = run_intercode_benchmark(
+            config,
+            limit=args.limit,
+            task_ids=args.task_id,
+            restart=args.restart,
+        )
+        print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if summary.runner_failures == 0 else 1
+
+    if args.command == "evaluate-intercode":
+        report = evaluate_intercode_benchmark(config)
+        print(json.dumps(report["scoring"], ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compare-intercode":
+        baseline = ExperimentConfig.from_toml(args.baseline_config)
+        report = compare_intercode_benchmarks(config, baseline, args.output)
         print(json.dumps(report["difference"], ensure_ascii=False, indent=2))
         return 0
 
@@ -827,6 +861,37 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     fanoutqa_compare.add_argument(
         "--output", type=Path, default=Path("runs/fanoutqa/dev/paired-report.json")
+    )
+
+    intercode_inspect = subparsers.add_parser(
+        "inspect-intercode", help="Inspect the pinned official InterCode Bash and SQL environments."
+    )
+    _add_config_argument(intercode_inspect, default=INTERCODE_CONFIG)
+
+    intercode_run = subparsers.add_parser(
+        "run-intercode", help="Run GraphPTC or the matched PTC baseline on official InterCode."
+    )
+    _add_config_argument(intercode_run, default=INTERCODE_CONFIG)
+    intercode_run.add_argument("--limit", type=int)
+    intercode_run.add_argument("--task-id", action="append", default=[])
+    intercode_run.add_argument("--restart", action="store_true")
+
+    intercode_evaluate = subparsers.add_parser(
+        "evaluate-intercode", help="Aggregate official InterCode success and action metrics."
+    )
+    _add_config_argument(intercode_evaluate, default=INTERCODE_CONFIG)
+
+    intercode_compare = subparsers.add_parser(
+        "compare-intercode", help="Create the matched InterCode paired result report."
+    )
+    _add_config_argument(intercode_compare, default=INTERCODE_CONFIG)
+    intercode_compare.add_argument(
+        "--baseline-config",
+        type=Path,
+        default=Path("configs/intercode/baseline.toml"),
+    )
+    intercode_compare.add_argument(
+        "--output", type=Path, default=Path("runs/intercode/paired-report.json")
     )
 
     deepplanning_inspect = subparsers.add_parser(
