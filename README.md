@@ -113,6 +113,10 @@ AppWorld、ToolSandbox 和 Agent-Diff 使用仓库下互相隔离的 `external/`
 bash scripts/setup/server.sh
 ```
 
+Git clone 不包含完整 benchmark 数据和本地 Wikipedia/BM25 服务。六项正式重测的官方来源、固定
+revision、下载命令、目标目录与验收标准统一见
+[数据集下载与准备](docs/dataset-setup.md)；不要从非官方镜像补齐缺失文件。
+
 Windows 仍可作为本地控制端：
 
 ```powershell
@@ -203,6 +207,9 @@ benchmark：BrowseComp-Plus、AppWorld、ToolSandbox、Agent-Diff、FanOutQA 和
 - 新旧配置的任务数、数据选择、预算、prompt variant 和输出目录是否 matched。
 
 具体配置组和执行纪律见 [AGENTS.md](AGENTS.md)。
+
+若服务器是从 GitHub clone 开始准备，先按
+[数据集下载与准备](docs/dataset-setup.md)完成六项数据和本地检索服务，再执行统一预检。
 
 服务器数据和服务就绪后，统一预检不会发起付费 agent 请求：
 

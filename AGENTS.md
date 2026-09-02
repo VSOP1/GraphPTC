@@ -5,7 +5,7 @@
 ## 开始前
 
 1. 从仓库根目录工作，先阅读 `README.md`、`docs/server-evaluation.md`、
-   `docs/benchmark-results.md` 和目标 benchmark 文档。
+   `docs/dataset-setup.md`、`docs/benchmark-results.md` 和目标 benchmark 文档。
 2. 获取模型 ID、OpenAI-compatible base URL、API key 的环境变量名和新的 profile 名称；不要请求、
    输出或写入明文密钥。
 3. 检查 `git status`。不要覆盖用户未提交的改动，也不要修改历史 `runs/`。
@@ -51,13 +51,15 @@ ALFWorld、APIFlow、ToolHop 和 InterCode 虽有完整结果，但当前没有�
 
 ## 预检与运行
 
-1. 使用 `.venv/bin/python -m graphptc --help` 确认服务器命令入口。
-2. 先执行 `full_suite.py preflight --profile <name>`，再执行 `all --dry-run` 并向用户报告 21 份配置。
-3. BrowseComp-Plus 必须检查 retriever `/metadata`；`/health` 不能代替运行签名元数据检查。
-4. 检查所有 agent、grader、user simulator 和 search API 环境变量。
-5. 输出运行计划：配置组、任务数、输出目录、grader 和准确命令。
-6. 预检通过后才允许发起付费模型请求。
-7. 中断后重复同一命令续跑。不得擅自添加 `--restart`、删除 checkpoint、只重试选中的失败任务，
+1. 若数据或本地检索服务尚未准备，严格按 `docs/dataset-setup.md` 的官方来源、固定 revision、目标
+   路径和单项验收命令准备；不得用非官方镜像或最新 revision 静默替换冻结数据。
+2. 使用 `.venv/bin/python -m graphptc --help` 确认服务器命令入口。
+3. 先执行 `full_suite.py preflight --profile <name>`，再执行 `all --dry-run` 并向用户报告 21 份配置。
+4. BrowseComp-Plus 必须检查 retriever `/metadata`；`/health` 不能代替运行签名元数据检查。
+5. 检查所有 agent、grader、user simulator 和 search API 环境变量。
+6. 输出运行计划：配置组、任务数、输出目录、grader 和准确命令。
+7. 预检通过后才允许发起付费模型请求。
+8. 中断后重复同一命令续跑。不得擅自添加 `--restart`、删除 checkpoint、只重试选中的失败任务，
    或把新代码续接到历史运行目录。
 
 ## 打包

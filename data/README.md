@@ -2,6 +2,8 @@
 
 这里保存可分发的小型数据、任务 manifest、冻结选择和 provenance。大型语料、索引、Kiwix ZIM、
 缓存和受许可限制的数据由 `scripts/<benchmark>/` 或官方环境准备，通常不会进入 Git。
+从空 Git clone 准备六项正式评测时，统一按
+[数据集下载与准备](../docs/dataset-setup.md)中的官方来源、固定 revision 和验收命令执行。
 
 不要移动或改写已经被运行签名引用的数据。新增数据时应记录来源、revision、选择规则、预期数量和
 SHA-256；开发子集、合成 fixture 与官方 split 必须明确区分。

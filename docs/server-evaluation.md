@@ -38,7 +38,8 @@ cp .env.example .env
 ## 3. 准备大型数据与服务
 
 源码包不包含约 142 GB 的本地检索数据。可以从原机器安全同步 `data/` 中对应正式文件，也可以按
-benchmark 文档重建。开始前必须满足：
+官方来源重建。完整下载地址、固定 revision、服务器命令、目标目录和逐项验收标准见
+[六项正式评测的数据下载与准备](dataset-setup.md)。开始前必须满足：
 
 - BrowseComp-Plus：完整 830 题、加密上游 CSV、qrels、BM25 corpus/index，且 retriever
   `/metadata` 与配置一致；
@@ -46,7 +47,8 @@ benchmark 文档重建。开始前必须满足：
 - FRAMES：固定 `wikipedia/20230601.en` Pyserini/BM25 服务；
 - Agent-Diff：执行一次 `.venv/bin/python -m graphptc download-agent-diff` 下载冻结 224 题数据。
 
-详细命令见 `docs/benchmarks/`。AppWorld 下载数据受其官方许可约束，不进入 GraphPTC 源码包。
+各 benchmark 的方法与运行边界仍见 `docs/benchmarks/`。AppWorld 下载数据受其官方许可约束，
+不进入 GraphPTC 源码包。
 
 ## 4. 创建新模型 profile
 
