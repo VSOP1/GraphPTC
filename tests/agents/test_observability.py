@@ -3,11 +3,11 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from graphptc.codeact_agent import CodeActPTCAgent
+from graphptc.agents.codeact import CodeActPTCAgent
 from graphptc.config import RuntimeConfig
-from graphptc.experiments.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
+from graphptc.benchmarks.browsecomp_plus.ptc_fewshot import PTC_FEW_SHOT_MESSAGES
 from graphptc.model import ModelTurn, TokenUsage, ToolCall
-from graphptc.observability import ExecutionObserver, InMemoryEventSink
+from graphptc.runtime.observability import ExecutionObserver, InMemoryEventSink
 
 
 class RecordingModel:
@@ -90,7 +90,7 @@ def _agent(
 def test_observer_is_behaviorally_transparent_for_matched_runs(
     monkeypatch: Any,
 ) -> None:
-    monkeypatch.setattr("graphptc.ptc.time.perf_counter", lambda: 100.0)
+    monkeypatch.setattr("graphptc.agents.original_ptc.time.perf_counter", lambda: 100.0)
     turns = [
         _tool_turn(
             "call-1",

@@ -19,13 +19,12 @@ compaction_max_tokens = 2048
 max_compactions = 0
 max_total_output_tokens = 61440
 graph_adaptation_mode = "off"
-graph_inspection_enabled = false
 
 [alfworld]
-data_root = "/home/agent/.cache/alfworld"
-official_config_path = "/mnt/d/GraphPTC/configs/alfworld/official-eval-0.4.2.yaml"
+data_root = "{repo}/external/alfworld/data"
+official_config_path = "{repo}/configs/alfworld/official-eval-0.4.2.yaml"
 split = "eval_out_of_distribution"
-worker_command = ["wsl.exe", "-d", "Ubuntu-22.04", "-e", "/home/agent/graphptc-alfworld/.venv/bin/python", "/mnt/d/GraphPTC/src/graphptc/alfworld_worker.py"]
+worker_command = ["{repo}/external/alfworld/.venv/bin/python", "{repo}/src/graphptc/benchmarks/alfworld/worker.py"]
 results_path = "runs/alfworld/valid-unseen/fewshot-ptc/results.jsonl"
 report_path = "runs/alfworld/valid-unseen/fewshot-ptc/report.json"
 graph_dir = "runs/alfworld/valid-unseen/fewshot-ptc/graphs"

@@ -5,7 +5,7 @@ from typing import Any
 
 from graphptc.config import RuntimeConfig
 from graphptc.model import ModelTurn, TokenUsage
-from graphptc.ptc import OriginalPTCAgent, _analyze_program, extract_result_tag
+from graphptc.agents.original_ptc import OriginalPTCAgent, _analyze_program, extract_result_tag
 
 
 @dataclass
@@ -518,7 +518,7 @@ def test_agent_reserves_last_model_turn_for_finalization() -> None:
         model.messages_seen[1][-1]["content"].lower()
     )
     assert model.requests_seen[1]["max_completion_tokens"] == 4096
-    assert model.requests_seen[1]["thinking"] == "disabled"
+    assert "thinking" not in model.requests_seen[1]
 
 
 def test_agent_removes_ptc_tool_after_block_budget_is_used() -> None:
@@ -795,7 +795,7 @@ def test_agent_passes_remaining_task_deadline_to_model(
     monkeypatch: Any,
 ) -> None:
     ticks = iter([100.0, 101.0, 102.0, 103.0, 104.0, 105.0])
-    monkeypatch.setattr("graphptc.ptc.time.perf_counter", lambda: next(ticks))
+    monkeypatch.setattr("graphptc.agents.original_ptc.time.perf_counter", lambda: next(ticks))
     tools = FakeSearchTools(calls=[])
     model = ScriptedModel([_answer_turn("<result>answer</result>")])
     agent = OriginalPTCAgent(

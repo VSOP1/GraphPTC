@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from graphptc.codeact_agent import CodeActPTCAgent
+from graphptc.agents.codeact import CodeActPTCAgent
 from graphptc.config import RuntimeConfig
 from graphptc.model import ModelTurn, TokenUsage, ToolCall
-from graphptc.observability import ExecutionObserver, InMemoryEventSink
-from graphptc.persistent_runtime import PersistentIpcRuntime
+from graphptc.runtime.observability import ExecutionObserver, InMemoryEventSink
+from graphptc.runtime.persistent import PersistentIpcRuntime
 
 
 class ScriptedModel:

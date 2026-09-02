@@ -6,7 +6,9 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
-data/*.csv
+dist/
+external/
+data/browsecomp_plus/browse_comp_test_set.csv
 data/browsecomp_plus/corpus_parquet/
 data/browsecomp_plus/upstream/
 data/browsecomp_plus/official_indexes/
@@ -26,4 +28,5 @@ data/fanoutqa/*.tar.gz
 data/fanoutqa/kiwix-tools-*/
 data/frames/*
 !data/frames/test.tsv
-runs/
+runs/*
+!runs/README.md

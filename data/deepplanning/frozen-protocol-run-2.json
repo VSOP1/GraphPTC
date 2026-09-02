@@ -46,7 +46,6 @@
     "conversion_retries": 30,
     "official_task_wall_clock_seconds": null,
     "selected_task_wall_clock": "unbounded",
-    "graph_inspection_enabled": false,
     "selected_failures_retried": false
   },
   "predecessor_runs": [

@@ -18,16 +18,14 @@ max_stdout_chars = 8000
 finalization_max_tokens = 32768
 max_compactions = 0
 graph_adaptation_mode = "generic"
-graph_inspection_enabled = false
 
 [apiflow]
-root = "D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0"
+root = "{repo}/external/apiflow/APIFlow-Bench-1.0"
 official_worker_command = [
-  "D:/APIFlow-Bench-v1.0/.venv/Scripts/python.exe",
-  "D:/GraphPTC/src/graphptc/apiflow_official_worker.py",
+  "{repo}/external/apiflow/.venv/bin/python",
+  "{repo}/src/graphptc/benchmarks/apiflow/official_worker.py",
 ]
-bank_path = "D:/APIFlow-Bench-v1.0/APIFlow-Bench-1.0/tasks/v1.0"
-bank_sha256 = "abc3a823386b7f755e326017191a2e42596bf884ed8e60c44ac1d6e1cc0b615e"
+bank_path = "{repo}/external/apiflow/APIFlow-Bench-1.0/tasks/v1.0"
 task_manifest_path = "data/apiflow/v1.0-467.json"
 results_path = "runs/apiflow/temperature1-epoch1/graphptc/results.jsonl"
 report_path = "runs/apiflow/temperature1-epoch1/graphptc/report.json"

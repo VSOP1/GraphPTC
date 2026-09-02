@@ -1,0 +1,1 @@
+"""FanOutQA benchmark adapter."""

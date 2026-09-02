@@ -1,0 +1,36 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 4096
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = 8
+temperature = 0.0
+
+[runtime]
+max_turns = 30
+max_ptc_blocks = 29
+task_timeout_seconds = 1800.0
+code_timeout_seconds = 100.0
+max_stdout_chars = 8000
+finalization_max_tokens = 2048
+compaction_max_tokens = 2048
+max_compactions = 0
+max_total_output_tokens = 61440
+graph_adaptation_mode = "off"
+
+[appworld]
+root = "{repo}/external/appworld"
+dataset_name = "test_normal"
+experiment_name = "direct-tools-test-normal"
+worker_command = [
+  "{repo}/external/appworld/.venv/bin/python",
+  "{repo}/src/graphptc/benchmarks/appworld/worker.py",
+]
+results_path = "runs/appworld/direct-tools-test-normal/results.jsonl"
+report_path = "runs/appworld/direct-tools-test-normal/report.json"
+graph_dir = "runs/appworld/direct-tools-test-normal/graphs"
+workers = 4
+expected_tasks = 168
+prompt_variant = "appworld-direct-tools-v1"

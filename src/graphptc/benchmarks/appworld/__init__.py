@@ -1,0 +1,1 @@
+"""AppWorld benchmark adapter."""

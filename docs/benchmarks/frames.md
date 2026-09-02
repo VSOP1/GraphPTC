@@ -12,19 +12,24 @@ PTC Python environment. Both arms use the same MiMo model, synthetic planning
 demonstration, retrieval service, budgets, and concurrency; the only method
 difference is `graph_adaptation_mode = "generic"` versus `"off"`.
 
+The Direct Tool Calling config `configs/frames/direct-tools-test.toml` exposes the same two
+retrieval functions as native model tools, disables the PTC demonstration and graph control, and
+keeps the same dataset, retriever, query budget, grader, and output limits.
+
 Prepare and serve the official corpus in Ubuntu 22.04:
 
 ```bash
-bash /mnt/d/GraphPTC/scripts/services/setup_frames_retriever.sh
-bash /mnt/d/GraphPTC/scripts/data/prepare_frames_wikipedia.sh
-bash /mnt/d/GraphPTC/scripts/services/run_frames_retriever.sh
+bash scripts/frames/setup_retriever.sh
+bash scripts/frames/prepare_wikipedia.sh
+bash scripts/frames/run_retriever.sh
 ```
 
-After `probe-frames-wikipedia` succeeds, run both arms concurrently without
-intermediate console output:
+After `probe-frames-wikipedia` succeeds, run the generated three-arm profile through the unified
+launcher:
 
-```powershell
-.\scripts\run_frames_test_paired.ps1 -Restart
+```bash
+.venv/bin/python scripts/evaluation/full_suite.py preflight --profile MODEL_PROFILE
+.venv/bin/python scripts/evaluation/full_suite.py all --profile MODEL_PROFILE
 ```
 
 The primary metric is MiMo accuracy using the FRAMES paper's Figure 6 autorater

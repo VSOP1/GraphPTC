@@ -26,7 +26,6 @@
   "system_prompt_sha256": "e5dda4827c18189e249b72e9612ae511f58d108a734e37970d1c698c2e2798f8",
   "demonstrations_sha256": "41e7bd036d1ec5fb8532e07e00af4bb9a5d7fb0b29059c1db434b553a42a7ba9",
   "tool_spec_sha256": "f453ca7811255541bd0521fc2d43bebafe4310844c6f4a6a4c710e4e98bd0687",
-  "graph_inspection_enabled": true,
   "max_stdout_chars": 8000,
   "workers": 2,
   "environment_freezes": {
@@ -68,10 +67,6 @@
     "incomplete_tasks": 0,
     "evaluator_failures": 0,
     "runner_failures": 0,
-    "inspection_declared": 0,
-    "inspection_succeeded": 0,
-    "inspection_failed": 0,
-    "inspection_results_returned": 0,
     "blocks": 22,
     "api_calls": 130,
     "stdout_truncations": 0,

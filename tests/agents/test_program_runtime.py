@@ -7,7 +7,7 @@ from codecell.python import PythonValidator
 
 from graphptc.config import RuntimeConfig
 from graphptc.model import ModelTurn, TokenUsage, ToolCall
-from graphptc.ptc import OriginalPTCAgent
+from graphptc.agents.original_ptc import OriginalPTCAgent
 
 
 class EmptyTools:

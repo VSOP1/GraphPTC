@@ -19,7 +19,6 @@ compaction_max_tokens = 2048
 max_compactions = 0
 max_total_output_tokens = 61440
 graph_adaptation_mode = "generic"
-graph_inspection_enabled = false
 
 [grader]
 provider = "openai_compatible"

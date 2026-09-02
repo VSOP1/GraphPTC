@@ -19,11 +19,10 @@ max_stdout_chars = 8000
 finalization_max_tokens = 4096
 max_compactions = 0
 graph_adaptation_mode = "generic"
-graph_inspection_enabled = false
 
 [deepplanning]
-root = "D:/GraphPTC-DeepPlanning"
-python_command = "D:/GraphPTC-DeepPlanning/.venv/python.exe"
+root = "{repo}/external/deepplanning"
+python_command = "{repo}/external/deepplanning/.venv/bin/python"
 official_commit = "31a4d36d123688581a9e9744427272b33ce940e0"
 data_revision = "213876cce679f993a476d01042e13d111c0e3648"
 results_dir = "runs/deepplanning"

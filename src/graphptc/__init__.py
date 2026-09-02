@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 
 def __getattr__(name: str) -> Any:
     if name == "OriginalPTCAgent":
-        from .ptc import OriginalPTCAgent
+        from .agents.original_ptc import OriginalPTCAgent
 
         return OriginalPTCAgent
     raise AttributeError(name)

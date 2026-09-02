@@ -1,176 +1,271 @@
-# GraphPTC Stage 0
+# GraphPTC
 
-本目录实现论文实验的第一阶段：在 DeepSearchQA 上建立可复现的 Original PTC
-baseline。当前阶段不包含执行图、故障归因、patch、失效传播或选择性重执行。
+GraphPTC 是一个面向深度检索与工具使用任务的 Programmatic Tool Calling（PTC）评测仓库。
+模型通过 `programmatic_tool_call` 在持久 Python 运行时中组织多次工具调用；GraphPTC 在相同
+Agent 主循环上维护执行与依赖图，用于记录任务进展、工具效果和后续适应动作。
 
-## 实现边界
+本仓库的重点不是提供一个通用聊天框架，而是让 GraphPTC 与 matched Fewshot PTC 在冻结数据、
+相同模型、相同预算和相同评分器下进行可复现比较。历史配置、响应、评分、报告和运行签名应视为
+评测证据，不应原地改写。
 
-每道题由 Agent 自主决定生成多少个 PTC block：
+项目的论文方法主线、创新点和组件边界见
+[GraphPTC 创新点与方法总结](docs/architecture/GraphPTC创新点与方法总结.md)。
 
-1. MiMo 以 `tool_choice=auto` 接收唯一的直接工具
-   `programmatic_tool_call`。
-2. 每次调用提交一个自包含 Python 程序。
-3. `search_web`、`search_web_batch`、`fetch_url` 和 `fetch_urls`
-   只注册到 PTC runtime，不会出现在模型的 tools 列表中。
-4. 程序可以连续调用这些工具，中间结果留在程序内，只有 stdout 返回模型。
-5. 模型查看 stdout 后，自主决定继续生成 PTC block 或提交最终答案。
+## 当前评测结论
 
-Agent 使用 Anthropic 公开复现实验中的最小问题模板：可以自由规划和多次搜索，
-最终答案写入 `<result>` 标签。完整回复保留在执行记录中，只有最后一个非空
-`<result>` 的内容作为 benchmark prediction。`tool_choice=auto` 允许 Agent 在不需要
-搜索时直接作答，也允许按任务复杂度生成零个、一个或多个 PTC block。
+“领先”仅表示本仓库内 GraphPTC 相对 matched Fewshot PTC 的本地结果，不代表外部排行榜 SOTA。
 
-`max_turns=100`、`max_ptc_blocks=100` 和 `max_tool_calls=1000` 是防失控的资源
-上限，不是每题固定调用数。它们有意设置得远高于初始测试中的实际用量，避免
-harness 过早强制收尾。每题另有 `task_timeout_seconds=3600` 的 wall-clock
-保险预算。
+| Benchmark | 范围与主要指标 | GraphPTC | Fewshot PTC | 差值 |
+| --- | --- | ---: | ---: | ---: |
+| BrowseComp-Plus | 全部 830 题，accuracy | 35.66% | 29.40% | +6.27 pp |
+| AppWorld test-normal | 168 tasks，TGC / SGC | 78.0 / 67.9 | 67.3 / 41.1 | +10.7 / +26.8 pp |
+| AppWorld test-challenge | 417 tasks，TGC / SGC | 69.8 / 54.0 | 52.5 / 30.2 | +17.3 / +23.8 pp |
+| ToolSandbox | 1,032 scenarios，official similarity | 74.16 | 43.67 | +30.48 pp |
+| Agent-Diff | 224 tasks × 3 trials，pass rate | 67.86% | 67.11% | +0.74 pp |
+| FanOutQA | dev 310，official-local loose | 72.13% | 68.09% | +4.04 pp |
+| FRAMES | test 824，paper-style judge | 69.54% | 66.38% | +3.16 pp |
 
-实现采用薄封装方案：模型和 benchmark 适配由本项目实现，本地 Python
-子进程、AST 检查和双向工具 IPC 复用固定版本的
-`ToolRegistry 0.14.0 + codecell 0.2.1`。没有 Claude 依赖，也没有 Claude Code
-container。
+ALFWorld、APIFlow-Bench、ToolHop 和 InterCode 已完成 paired 全量评测，但 GraphPTC 没有取得
+总体领先。DeepPlanning adapter 仍可使用，但当前没有保留可汇总的全量结果。
+完整指标、次要指标、限制和证据路径见
+[评测结果汇总](docs/benchmark-results.md)。
+
+## 目录结构
+
+```text
+GraphPTC/
+├── configs/                     # 按 benchmark 保存冻结配置
+├── data/                        # 小型数据、选择清单和 provenance；大型数据通常忽略
+├── docs/
+│   ├── architecture/            # 项目定位与架构文档
+│   ├── benchmarks/              # benchmark 安装、环境和评测说明
+│   ├── development/             # 研究日志
+│   └── handoffs/                # 会话与交接说明
+├── external/                    # 服务器隔离环境；由 setup 脚本生成，不入 Git
+├── infra/                       # 外部 retriever、Docker 和隔离环境依赖
+├── runs/                        # 本地响应、评分、报告、图和日志；默认不入 Git
+├── scripts/                     # 按 benchmark 组织的数据、服务、运行和诊断脚本
+├── src/graphptc/
+│   ├── cli/                     # 参数解析与命令分发
+│   ├── agents/                  # Original PTC、CodeAct 和 direct-tools Agent
+│   ├── runtime/                 # 持久运行时、worker、telemetry 和 JSONL 工具
+│   ├── graph/                   # 执行图、投影、适应策略和工具效果
+│   ├── retrieval/               # 联网搜索与本地语料检索
+│   └── benchmarks/              # 每个 benchmark 的 adapter/runtime/worker/prompt
+└── tests/                       # 与源码职责和 benchmark 结构对应
+```
+
+各目录说明：
+
+- [configs](configs/README.md)
+- [data](data/README.md)
+- [docs](docs/README.md)
+- [infra](infra/README.md)
+- [runs](runs/README.md)
+- [scripts](scripts/README.md)
+
+## 架构边界
+
+```text
+benchmark task
+  → benchmark adapter
+  ├─ GraphPTC / Fewshot PTC → OriginalPTCAgent / CodeActPTCAgent
+  │  → persistent program runtime → execution events and Research Graph
+  └─ Direct Tool Calling → DirectToolAgent → native benchmark functions
+  → benchmark tools or isolated official worker
+  → prediction, official/local evaluator, report
+```
+
+- `agents/` 分别实现 PTC 协议和原生 function-calling 协议，不包含 benchmark 数据或评分逻辑。
+- `runtime/` 执行生成代码并保持单个任务内的 Python 状态。
+- `graph/` 记录依赖、效果和诊断；图写入或结构成功不等于 benchmark 提升。
+- `benchmarks/` 只处理任务加载、官方环境桥接、结果持久化和评分。
+- 外部 benchmark worker 属于受信评测环境，不是生产安全沙箱。
+
+### Direct Tool Calling baseline
+
+`DirectToolAgent` 是 benchmark 无关的原生 function-calling 循环。它只接收模型、运行预算、系统与
+任务提示、`工具名 → Python callable` 映射、对应的 OpenAI function tool schema，以及可选的最终
+回答提示。核心不依赖 `search`、`fetch` 或某个 benchmark runtime，并统一记录工具名、成功状态、
+错误类型、耗时和 observation 大小。
+
+benchmark adapter 仍负责工具/runtime 的创建与关闭、任务提示、最终答案解析、官方评分和领域指标。
+BrowseComp-Plus、AppWorld、ToolSandbox、Agent-Diff、FanOutQA 和 FRAMES 均已接入该 baseline。
+其中 ToolSandbox 为保留官方多角色对话和动态工具 schema，在官方 worker 内复用相同的原生
+function-calling 协议；其余五项直接使用通用 `DirectToolAgent` 主循环。
+这些 direct 配置用于老师后续重测，仓库当前没有把它们标记为已有正式结果。
 
 ## 安装
 
-需要 Python 3.11 或更高版本。在 PowerShell 中运行：
+主环境要求 Python 3.11+。老师的 Linux 服务器建议直接执行：
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e ".[dev,browsecomp-plus,agent-diff,fanoutqa]"
+cp .env.example .env
+.venv/bin/python -m graphptc --help
+```
+
+AppWorld、ToolSandbox 和 Agent-Diff 使用仓库下互相隔离的 `external/` 环境，可一次准备：
+
+```bash
+bash scripts/setup/server.sh
+```
+
+Windows 仍可作为本地控制端：
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,browsecomp-plus,agent-diff,fanoutqa]"
+Copy-Item .env.example .env
 ```
 
-在本地 `.env` 中配置：
-
-```dotenv
-MIMO_API_KEY=...
-TAVILY_API_KEY=...
-```
-
-`MIMO_API_KEY` 同时用于当前的 `mimo-v2.5` Agent 和迭代阶段 grader，
-`TAVILY_API_KEY` 用于搜索与网页提取。
-
-## 运行
-
-下载并校验官方 Kaggle v4 数据：
+检查入口：
 
 ```powershell
-.\.venv\Scripts\graphptc.exe download-data
+.\.venv\Scripts\graphptc.exe --help
+.\.venv\Scripts\python.exe -m graphptc --help
 ```
 
-先运行少量样本验证 API 和日志：
+主模型通过支持 function calling 的 OpenAI-compatible Chat Completions 接口调用。密钥只写入
+本地 `.env`，配置中只保存环境变量名。非 OpenAI-compatible 的原生 Anthropic/Gemini 接口需要先
+部署兼容网关；目标接口不支持 `thinking` 扩展时不要在 `[model]` 中填写该字段。
+
+## 配置模型 API
+
+每个 TOML 的 `[model]` 控制被评测模型：
+
+```toml
+[model]
+model = "your-model-id"
+base_url = "https://api.example.com/v1"
+api_key_env = "TEACHER_MODEL_API_KEY"
+```
+
+`[grader]` 是独立评分器。只切换被评测模型时不要同时更换 grader；若确实更换，结果必须标记为
+新的开发期评分协议，不能与当前表格直接比较。
+
+不要原地修改已经产生历史结果的配置。使用统一入口创建 GraphPTC、Fewshot PTC 和 Direct Tool
+Calling 三组 profile；生成的 21 份配置保存在 `runs/profiles/<profile>/configs/`，不会覆盖历史配置：
+
+```bash
+.venv/bin/python scripts/evaluation/full_suite.py create-profile \
+  --profile teacher-model-v1 \
+  --model your-model-id \
+  --base-url https://api.example.com/v1 \
+  --api-key-env TEACHER_MODEL_API_KEY
+```
+
+ToolSandbox 的 `[user_model]` 是冻结 user simulator，不会随 `[model]` 一起切换。仓库级 Codex 操作
+规则见 [AGENTS.md](AGENTS.md)。
+
+## 单个 benchmark 快速运行
+
+先用对应的 `inspect-*` 或 `probe-*` 命令检查环境，再生成和评分。例如 FRAMES：
 
 ```powershell
-.\.venv\Scripts\graphptc.exe run --limit 3
+.\.venv\Scripts\graphptc.exe inspect-frames `
+  --config configs/frames/graphptc-test.toml
+.\.venv\Scripts\graphptc.exe probe-frames-wikipedia `
+  --config configs/frames/graphptc-test.toml
+.\.venv\Scripts\graphptc.exe run-frames `
+  --config configs/frames/graphptc-test.toml
+.\.venv\Scripts\graphptc.exe evaluate-frames `
+  --config configs/frames/graphptc-test.toml
 ```
 
-确认后断点续跑完整 900 题：
+再次执行相同命令会按各 adapter 的 checkpoint 规则继续。除非明确要创建一轮全新实验，否则不要
+传入 `--restart`，也不要删除已成功任务或只重试挑选出的失败样本。
+
+所有保留命令可通过以下方式查看：
 
 ```powershell
-.\.venv\Scripts\graphptc.exe run
+.\.venv\Scripts\graphptc.exe --help
 ```
 
-runner 默认跳过已经成功写入 `responses.jsonl` 的 example ID，并自动重试
-所选范围内的失败记录。只有显式传入 `--restart` 才会清空整个响应文件并重跑
-所选样本。每条记录包含模型、prompt、搜索、runtime、依赖版本和实现源码指纹；
-配置或实现变化时会拒绝把新结果混入旧文件。
+## 全量三组评测
 
-使用官方 judge prompt 和当前配置的 MiMo grader 评分：
+当前建议交给新模型重测的完整集合是六个已完成全量、且主要指标显示本地 GraphPTC lead 的
+benchmark：BrowseComp-Plus、AppWorld、ToolSandbox、Agent-Diff、FanOutQA 和 FRAMES。
+
+每个 benchmark 必须同时运行 GraphPTC、Fewshot PTC 与 Direct Tool Calling 配置。正式配置总表见
+[configs/README.md](configs/README.md)。BrowseComp-Plus 直接使用
+`data/browsecomp_plus/questions.jsonl` 完成单次 830 题评测，不再拆分 fold。Codex 在开始任何
+付费请求前必须检查：
+
+- agent API key 与冻结 grader key；
+- BrowseComp-Plus retriever `/metadata`，不能只检查 `/health`；
+- AppWorld、ToolSandbox 和 Agent-Diff 的隔离官方环境；
+- FanOutQA 的固定 Kiwix Wikipedia；
+- FRAMES 的固定 Pyserini/BM25 Wikipedia 快照；
+- 新旧配置的任务数、数据选择、预算、prompt variant 和输出目录是否 matched。
+
+具体配置组和执行纪律见 [AGENTS.md](AGENTS.md)。
+
+服务器数据和服务就绪后，统一预检不会发起付费 agent 请求：
+
+```bash
+.venv/bin/python scripts/evaluation/full_suite.py preflight --profile teacher-model-v1
+.venv/bin/python scripts/evaluation/full_suite.py all --profile teacher-model-v1 --dry-run
+```
+
+确认 9 项预检和 21 组命令无误后启动完整生成与评分：
+
+```bash
+.venv/bin/python scripts/evaluation/full_suite.py all --profile teacher-model-v1
+```
+
+中断后重复同一命令即可按 adapter checkpoint 续跑，统一入口不会自动添加 `--restart`。完整服务器
+交接步骤见 [服务器评测指南](docs/server-evaluation.md)。
+
+## 外部环境文档
+
+- [AppWorld](docs/benchmarks/appworld.md)
+- [BrowseComp-Plus](docs/benchmarks/browsecomp_plus.md)
+- [Agent-Diff](docs/benchmarks/agent_diff.md)
+- [ALFWorld](docs/benchmarks/alfworld.md)
+- [ToolSandbox](docs/benchmarks/toolsandbox.md)
+- [FanOutQA](docs/benchmarks/fanoutqa.md)
+- [FRAMES](docs/benchmarks/frames.md)
+- [DeepPlanning](docs/benchmarks/deepplanning.md)
+
+`scripts/<benchmark>/` 保存数据与服务脚本；`scripts/setup/`、`scripts/evaluation/` 和
+`scripts/release/` 分别负责服务器环境、统一评测和安全打包。
+
+## 复现纪律
+
+- 保留配置、数据选择、hash、响应、评分、报告、checkpoint、图事件和运行签名。
+- smoke、pilot、开发集、完整本地评测和官方 leaderboard 结果必须分开标注。
+- `runs/` 只保留当前汇总采用的最终全量运行；开发期产物不进入交接包。
+- GraphPTC 与对照分别报告准确率、执行失败、检索/工具调用、重复、时延和 token。
+- 结构图生成、`GRAPH_DELTA` 或工具调用减少不能单独视为任务结果提升。
+- 源码重构会产生新的 implementation hash；不要使用重构后的代码续跑旧 `runs/`。
+- `.env`、`.mcp_env`、受限数据和虚拟环境不得进入交接包；`runs/` 只交付
+  [最终结果清单](runs/README.md)中的目录。
+- `runs/` 和大型本地数据默认被 Git 忽略，因此 `git archive` 或普通 clone 不是可直接全量运行的
+  完整包。若老师需要开包即跑，应从工作区打包这些依赖，或按 benchmark 文档另行准备数据与官方环境。
+
+## 安全打包
+
+提交并确认工作树干净后执行：
+
+```bash
+.venv/bin/python scripts/release/build_package.py
+```
+
+命令会在 `dist/` 生成不含 `.env`、虚拟环境、缓存、外部环境和大型数据的 source ZIP、可直接
+`git clone` 的 Git bundle 及 SHA-256 清单。只有明确需要交付约 5.8 GB 历史证据时才增加
+`--include-results`。本地语料和官方环境体积约 142 GB，应按
+[服务器评测指南](docs/server-evaluation.md)单独同步或重建，不能和源码盲目压成一个包。
+
+## 测试
 
 ```powershell
-.\.venv\Scripts\graphptc.exe evaluate
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m compileall -q src scripts
 ```
 
-默认输出位于 `runs/deepsearchqa/official-style/`，与早期 prompt 调试结果隔离：
-
-- `responses.jsonl`：提取后的 `<result>` prediction、完整模型答案、成功/失败、
-  每个 PTC 的代码和 stdout、token、模型请求数、搜索调用与耗时。
-- `grades.jsonl`：官方逐题 precision、recall、F1 和判分详情。
-- `report.json`：宏平均指标、无效样本计数、数据哈希和模型版本。
-
-评分过程也支持断点恢复：每道题判完立即写入 `grades.jsonl`；相同预测、judge
-模型和官方 prompt 对应的有效 grade 会被复用，缺失、API 错误或无效 JSON 会在下次
-执行时单独重试。报告同时聚合成功/失败、PTC 数量、模型 token、搜索调用和各层耗时。
-
-## 分数说明
-
-项目不设置硬编码分数阈值。`evaluate` 正常输出宏平均 precision、recall、
-F1 以及空响应、grader 错误和无效 JSON 数量，再结合相同配置下的样本表现判断
-baseline 是否明显异常。
-
-迭代阶段默认使用 `mimo-v2.5` 充当 grader，因此该分数适合开发回归，但不能冒充
-DeepSearchQA 官方可比结果。正式复现实验时可将 `[grader]` 的 `provider` 改为
-`gemini`、模型改为 `gemini-2.5-flash`，安装 `.[gemini]` 并配置
-`GOOGLE_API_KEY`；judge prompt 和指标实现保持不变。
-
-## 后续接入 GPT
-
-模型层使用 OpenAI-compatible Chat Completions。接入 GPT 时只需更换
-`[model]` 的 `model`、`base_url` 和 `api_key_env`；不使用 MiMo
-thinking 扩展时删除 `thinking` 配置，PTC runtime 和评测代码无需修改。
-
-## BrowseComp
-
-BrowseComp 复用相同的官方式 Agent prompt 和 Original PTC runtime。官方加密
-数据集只以密文保存在 `data/browse_comp_test_set.csv`；runner 使用每行 `canary`
-在内存中解密问题和答案，不会把 ground truth 或 canary 写入响应记录。
-
-```powershell
-.\.venv\Scripts\graphptc.exe download-browsecomp
-.\.venv\Scripts\graphptc.exe run-browsecomp --example-id 0 --restart
-.\.venv\Scripts\graphptc.exe evaluate-browsecomp
-```
-
-BrowseComp 使用 Anthropic 复现代码公开的 A/B/C judge：`A` 为正确，`B` 为
-错误，`C` 为弃答，最终指标为全部 1,266 题上的 accuracy。当前配置仍以
-`mimo-v2.5` 作为开发期 grader，因此不能冒充 Anthropic 使用固定 Claude grader
-得到的官方可比结果。
-
-Anthropic 的 BrowseComp 配置使用服务端 compaction 和 3M task budget。MiMo 没有
-对应协议，baseline v2 在完整 assistant/tool-result 边界使用 tools-disabled MiMo 摘要，
-摘要成功后才删除旧历史，并单独记录压缩 token、延迟和失败。触发阈值与资源预算是
-MiMo 配置，不照搬 Claude 参数，因此仍不是 Anthropic 精确复现。
-
-## BrowseComp-Plus
-
-BrowseComp-Plus 是当前 Agent 架构迭代的主 benchmark。它使用固定的 830 个问题和
-100,195 篇本地语料，不调用 Tavily。baseline 使用冻结的官方 Pyserini/Lucene BM25、
-Qwen tokenizer 512-token snippet、top-5 和独立本地 retriever 服务。
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[browsecomp-plus,dev]"
-.\.venv\Scripts\graphptc.exe download-browsecomp-plus
-.\.venv\Scripts\graphptc.exe run-browsecomp-plus --example-id 769 --restart
-.\.venv\Scripts\graphptc.exe evaluate-browsecomp-plus
-```
-
-## ALFWorld adapter
-
-GraphPTC 与 matched Fewshot PTC baseline 已通过独立 worker 接入官方 ALFWorld 0.4.2
-文本环境，并为 `valid_seen` / `valid_unseen` 提供成对配置。本地全量开发评测已经完成；
-这些结果不是官方排行榜结果。环境隔离、对齐项、命令、结果和验证边界见
-[`docs/alfworld-evaluation.md`](docs/alfworld-evaluation.md)。
-
-FanOutQA open-book 已按官方 `wiki_search` / `wiki_content` 接口接入持久 PTC Python 环境；
-GraphPTC 与 matched Fewshot PTC 使用成对的 dev 310 配置、2023-09 本地 Kiwix Wikipedia
-和官方输出/评分格式。配置与运行说明见
-[`docs/fanoutqa-evaluation.md`](docs/fanoutqa-evaluation.md)。
-
-Original PTC 的冻结 20 题 pilot 由 SHA-256 对 query ID 排序选取，排除早期诊断题；
-选择依据、源数据哈希和题号保存在 `data/browsecomp_plus/pilot20.manifest.json`。对应
-配置为 `configs/browsecomp_plus.original-ptc-v1-turn30-pilot20.toml`。该配置显式要求
-20 条数据，不能用于 830 题全量评测；默认 `browsecomp_plus.example.toml` 指向全量输出。
-
-数据固定到 `Tevatron/browsecomp-plus-corpus` revision
-`b27b02bc3e45511b8b82a13e6f90ce761df726f6`，7 个 Parquet 分片均按官方 LFS SHA-256
-校验。问题由 BrowseComp-Plus qrel 的一基 `query_id` 映射到官方 BrowseComp 加密数据，
-避免重复下载包含相同文档的 2.78 GB query 数据。
-
-当前 MiMo grader 只用于开发回归。完成 Original PTC baseline 与 GraphPTC 的本地全量
-评测后，再切换官方 Qwen3-32B judge，并在 DeepSearchQA/BrowserComp 上对齐 Anthropic
-官方复现配置。
-
-## 安全限制
-
-当前执行后端是本地子进程隔离，不是安全沙箱。AST 检查不能作为恶意代码防线，
-子进程也可能继承宿主环境。本阶段只适合固定 benchmark 和受信模型输出，不应运行
-不受信代码或暴露生产凭据。真正的安全隔离不属于本次“无 container”实现范围。
+任何目录迁移都必须同步更新模块 import、配置中的 worker 路径、实现哈希源文件列表、脚本路径和
+测试。仅能在完整测试、CLI 冒烟和路径扫描通过后交付。

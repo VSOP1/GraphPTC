@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "graphptc"
 version = "0.1.0"
-description = "Original PTC baseline and agentic-search evaluation harness for GraphPTC"
+description = "GraphPTC and matched-baseline evaluation harness for agentic tool-use benchmarks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -25,9 +25,6 @@ agent-diff = [
 ]
 fanoutqa = [
     "fanoutqa[eval] @ git+https://github.com/zhudotexe/fanoutqa.git@989f4c40d9deea1ecb0897d7a17a9c0fe20d5c33",
-]
-gemini = [
-    "google-genai==2.15.0",
 ]
 dev = [
     "pytest==9.1.1",

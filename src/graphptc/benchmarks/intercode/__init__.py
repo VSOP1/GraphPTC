@@ -1,0 +1,1 @@
+"""InterCode benchmark adapter."""

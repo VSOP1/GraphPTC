@@ -1,0 +1,50 @@
+[model]
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+max_completion_tokens = 4096
+thinking = "disabled"
+timeout_seconds = 300.0
+max_retries = 8
+temperature = 0.0
+
+[runtime]
+max_turns = 30
+max_ptc_blocks = 29
+task_timeout_seconds = 1800.0
+code_timeout_seconds = 120.0
+max_stdout_chars = 8000
+finalization_max_tokens = 2048
+compaction_max_tokens = 2048
+max_compactions = 0
+max_total_output_tokens = 61440
+graph_adaptation_mode = "off"
+
+[grader]
+provider = "openai_compatible"
+model = "mimo-v2.5"
+base_url = "https://api.xiaomimimo.com/v1"
+api_key_env = "MIMO_API_KEY"
+workers = 5
+max_retries = 2
+max_completion_tokens = 8000
+thinking = "disabled"
+timeout_seconds = 120.0
+
+[fanoutqa]
+split = "dev"
+setting = "openbook"
+wikipedia_type = "kiwix"
+kiwix_base = "http://localhost:8888"
+kiwix_zimname = "wikipedia_en_all_nopic_2023-09"
+search_results = 10
+expected_tasks = 310
+workers = 4
+wiki_cache_dir = "runs/fanoutqa/dev/direct-tools/wiki-cache"
+results_path = "runs/fanoutqa/dev/direct-tools/results.jsonl"
+submission_path = "runs/fanoutqa/dev/direct-tools/submission.jsonl"
+grades_path = "runs/fanoutqa/dev/direct-tools/grades.jsonl"
+report_path = "runs/fanoutqa/dev/direct-tools/report.json"
+artifact_dir = "runs/fanoutqa/dev/direct-tools/artifacts"
+graph_dir = "runs/fanoutqa/dev/direct-tools/graphs"
+prompt_variant = "fanoutqa-direct-tools-v1"
